@@ -18353,7 +18353,91 @@ typedef int ggml_lock_t;
 #define ggml_thread_join   pthread_join
 
 #endif
+// 函数用于将当前线程绑定到指定的核心
+int bind_thread_to_core(int core_id,Core *cores) {
+    cpu_set_t *cpuset;
+    size_t setsize;
 
+    // 获取系统中可用的 CPU 核心数
+    int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    // printf("cpu count:%d\n",ncpu);
+    if (ncpu < 0) {
+        perror("Error getting the number of online processors");
+        return -1;
+    }
+
+    // 获取分配给 cpu_set_t 的大小
+    setsize = CPU_ALLOC_SIZE(ncpu);
+    cpuset = CPU_ALLOC(ncpu);
+    if (cpuset == NULL) {
+        perror("Error allocating CPU set");
+        return -1;
+    }
+
+    // 初始化 CPU 集合并设置指定的核心
+    CPU_ZERO_S(setsize, cpuset);
+    if (CPU_SET_S(core_id, setsize, cpuset) == 0) {
+        perror("Error setting CPU");
+        CPU_FREE(cpuset);
+        return -1;
+    }
+    // 将当前线程绑定到指定的核心
+    int result = pthread_setaffinity_np(pthread_self(), setsize, cpuset);
+    if (result != 0) {
+        fprintf(stderr, "Error binding thread to core %d: %s\n", core_id, strerror(result));
+        CPU_FREE(cpuset);
+        return -1;
+    }
+
+    // 打印绑定结果
+    // printf("Thread bound to core %d\n", core_id);
+
+    // 释放CPU集合
+    CPU_FREE(cpuset);
+    cores[core_id].isUsed=true;
+    
+    
+    return 0;
+}
+int clear_thread_affinity(pthread_t thread) {
+    cpu_set_t *cpuset;
+    size_t setsize;
+
+    // 获取系统中可用的 CPU 核心数
+    int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    // printf("cpu count:%d\n",ncpu);
+    if (ncpu < 0) {
+        perror("Error getting the number of online processors");
+        return -1;
+    }
+
+    // 获取分配给 cpu_set_t 的大小
+    setsize = CPU_ALLOC_SIZE(ncpu);
+    cpuset = CPU_ALLOC(ncpu);
+    if (cpuset == NULL) {
+        perror("Error allocating CPU set");
+        return -1;
+    }
+
+    // 初始化 CPU 集合并设置指定的核心
+    CPU_ZERO_S(setsize, cpuset);
+    
+    int result = pthread_setaffinity_np(pthread_self(), setsize, cpuset);
+    if (result != 0) {
+       
+        CPU_FREE(cpuset);
+        return -1;
+    }
+
+    // 打印绑定结果
+    printf("clear %d\n");
+
+    // 释放CPU集合
+    CPU_FREE(cpuset);
+    
+    
+    return 0;
+}
 // Android's libc implementation "bionic" does not support setting affinity
 #if defined(__gnu_linux__)
 static void set_numa_thread_affinity(int thread_n) {
@@ -18878,6 +18962,7 @@ typedef struct {
 
 Counter threadCounter;
 Counter threadCounter2;
+Counter threadCounter3;
 int idleCores = 0;
 int exits = 0;
 int adds=0;
@@ -18885,15 +18970,77 @@ int now_node = 0;
 int nowThreadCount = 0;
 int allCores=0;
 CThread_pool_t *pThreadPool = NULL;
+Core *cores = NULL;
+SharedGroup *shared_groups_level2;
+SharedGroup *shared_groups_level3;
+int count2=0;
+int count3=0;
+void print_cores_and_shared_groups() {
+    printf("----------------------------------------------\n");
+    if (cores == NULL) {
+        printf("No cores available.\n");
+        // return;
+    }else{
+        printf("Core Information:%d\n",allCores);
+        for (int i = 0; i < allCores; i++) {
+            printf("Core %d:\n", cores[i].id);
+            printf("  Last Assigned Time: %ld\n", (long)cores[i].last_assigned_time);
+            printf("  Is Used: %s\n", cores[i].isUsed ? "Yes" : "No");
+            printf("  Is Idle: %s\n", cores[i].isIdle ? "Yes" : "No");
+            if (cores[i].shared_group_level2 != NULL) {
+                printf("  Level 2 Shared Group: %p, Count: %d\n", (void *)cores[i].shared_group_level2, cores[i].count2);
+            } else {
+                printf("  Level 2 Shared Group: NULL\n");
+            }
+            if (cores[i].shared_group_level3 != NULL) {
+                printf("  Level 3 Shared Group: %p, Count: %d\n", (void *)cores[i].shared_group_level3, cores[i].count3);
+            } else {
+                printf("  Level 3 Shared Group: NULL\n");
+            }
+        }
+    }
 
+    printf("%d %d\n",count2,count3);
+    if(shared_groups_level2==NULL){
+        printf("error!!\n");
+    }
+    printf("\nShared Group Level 2 Information:\n");
+    for (int i = 0; i < count2; i++) {
+        printf("Group %d: Cores: ", i);
+        for (int j = 0; j < shared_groups_level2[i].count; j++) {
+            printf("%d ", shared_groups_level2[i].cores[j]);
+        }
+        printf("\n");
+    }
 
+    printf("\nShared Group Level 3 Information:\n");
+    for (int i = 0; i < count3; i++) {
+        printf("Group %d: Cores: ", i);
+        for (int j = 0; j < shared_groups_level3[i].count; j++) {
+            printf("%d ", shared_groups_level3[i].cores[j]);
+        }
+        printf("\n");
+    }
+    printf("----------------------------------------------\n");
+}
 static thread_ret_t ggml_graph_compute_thread(void *data) {
     struct ggml_compute_state *state = (struct ggml_compute_state *)data;
 
     const struct ggml_cgraph *cgraph = state->shared->cgraph;
     const struct ggml_cplan *cplan = state->shared->cplan;
-
-    // set_numa_thread_affinity(state->ith);
+    pthread_mutex_lock(&threadCounter3.lock);
+    // printf("thread bind %d,node:%d\n",state->ith,state->start_node);
+    set_numa_thread_affinity(state->ith);
+    // print_cores_and_shared_groups();
+    int assigned_core=find_core_assigned(cores,allCores);
+    if(assigned_core==-1){
+        // printf("bind\n");
+        bind_thread_to_core(state->ith,cores);
+    }else{
+        bind_thread_to_core(assigned_core,cores);
+    }
+    pthread_mutex_unlock(&threadCounter3.lock);
+    // print_cores_and_shared_groups();
     struct ggml_compute_params params = {
         .ith = state->ith,
         .nth = state->shared->n_threads,
@@ -18925,7 +19072,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         if (state->ith == all-1) { // 最后一个
             // printf("Thread:%d,all:%d;node:%d\n",state->ith,all,node_n);
             pthread_mutex_lock(&threadCounter.lock);
-            if (exits>0&& nowThreadCount > 10) {
+            if (exits>0&& nowThreadCount > 4) {
                 
                 exits--;
                 nowThreadCount--;
@@ -18938,16 +19085,17 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                 // printf("\nidle core:%d,Thread %d exiting, new thread count: %d\n",idleCores, state->ith, nowThreadCount);
                 pthread_cond_broadcast(&threadCounter2.cond); // 或 pthread_cond_broadcast(&cond);
                 pthread_mutex_unlock(&threadCounter2.lock);
-                
+                clear_numa_thread_affinity();
+                clear_thread_affinity(pthread_self());
+                update_last_assigned_time(cores,assigned_core);
+                // printf("exit %d \n",assigned_core);
+                // print_cores_and_shared_groups();
                 return 0;
             }
             else 
-            if (adds>0 ) {
-                adds=fmin(allCores-nowThreadCount-5,adds);
-                adds=fmax(adds,0);
-                nowThreadCount += adds;
-                
-                if(adds>0){
+            if (adds>0 &&nowThreadCount+adds<=allCores) {
+               
+                    nowThreadCount+=adds;
                     struct ggml_compute_state *workers = alloca(sizeof(struct ggml_compute_state) * adds);
                     for (int j = 0; j < adds; ++j) {
                         workers[j] = (struct ggml_compute_state){
@@ -18964,7 +19112,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                     }
                     adds=0;
                 
-                }
+                
                 
             }
             pthread_mutex_unlock(&threadCounter.lock);
@@ -18987,20 +19135,29 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
 
         
     }
+    clear_numa_thread_affinity();
+    clear_thread_affinity(pthread_self());
+    update_last_assigned_time(cores,assigned_core);
+    // printf("exit %d \n",assigned_core);
+    // print_cores_and_shared_groups();
     return 0;
 }
 
 void* monitor(void* arg) {
     while (1) { 
-        idleCores = getIdleCoresCount();
+        idleCores = getIdleCoresCount(cores,allCores);
         
         pthread_mutex_lock(&threadCounter.lock);
         if (idleCores < 5 && nowThreadCount > 1) {
             exits =1;
             adds=0;
-        } else if (idleCores > 15) {
+            // printf("exit!!!\n");
+            // print_cores_and_shared_groups();
+        } else if (idleCores > 10) {
             exits=0;
-            adds = idleCores-15;
+            adds = idleCores-10;
+            // printf("add!!!\n");
+            // print_cores_and_shared_groups();
         }else{
             exits=0;
             adds=0;
@@ -19014,13 +19171,17 @@ void* monitor(void* arg) {
 enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
     int n_threads = cplan->n_threads;
     if (pThreadPool == NULL) {
-        int allCores = getAllCores();
-        
+        allCores = getAllCores();
+        init_shared_groups(allCores, &shared_groups_level2, &count2,&shared_groups_level3,&count3);
+        // printf("%d %d %d\n",allCores,count2,count3);
+       
+        init_cores(&cores,allCores,&shared_groups_level2,count2,&shared_groups_level3,count3);
         pThreadPool = ThreadPoolConstruct(allCores, allCores);
         pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);
-        nowThreadCount = getIdleCoresCount();
+        nowThreadCount = getIdleCoresCount(cores,allCores);
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
-        allCores=getAllCores();
+        // printf("init\n");
+        // print_cores_and_shared_groups();
     }
     struct ggml_compute_state_shared state_shared = {
         /*.cgraph                  =*/ cgraph,
@@ -19048,7 +19209,11 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
     }
     ggml_graph_compute_thread(&workers[0]);
 
-    clear_numa_thread_affinity();
+    // clear_numa_thread_affinity();
+    // clear_thread_affinity(pthread_self());
+    // update_last_assigned_time(cores,assigned_core);
+    // printf("exit %d \n",assigned_core);
+    // print_cores_and_shared_groups();
     return state_shared.ec;
 }
 
