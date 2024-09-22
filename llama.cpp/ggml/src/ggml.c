@@ -19041,7 +19041,14 @@ void print_cores_and_shared_groups() {
 #include <sys/mman.h>
 #include <sys/stat.h>
 FILE * fout;
+void *mapped;
 void * datas[GGML_MAX_SRC];
+typedef struct {
+    int thread_id;
+    off_t offset;
+    size_t size;
+    void *buffer;
+} thread_args;
 
 //coolling：用于异步加载
 // 链表节点
@@ -19053,10 +19060,37 @@ typedef struct Node {
 Node *head = NULL;                  // 指向链表头部的指针
 Node *tail = NULL;                  // 指向链表尾部的指针
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;  // 互斥锁
+pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;  // 互斥锁
+pthread_cond_t read_over = PTHREAD_COND_INITIALIZER;    // 读取完的条件变量
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;    // 缓冲区为空的条件变量
 pthread_cond_t full = PTHREAD_COND_INITIALIZER;     // 缓冲区已满的条件变量
 int count = 0;                      // 缓冲区当前数据项的数量
+int over_count=0; //判断是否读取完
 struct ggml_cgraph * global_cgraph=NULL;
+int NUM_THREADS=40;
+FILE * fouts[40];
+void *read_data(void *args) {
+    thread_args *data = (thread_args *)args;
+    // 定位到文件的指定位置
+    fseek(fouts[data->thread_id], data->offset, SEEK_SET);
+    fread(data->buffer, 1, data->size, fouts[data->thread_id]);
+    // char *mapped_char = (char *)mapped;
+    // char *buffer = mapped_char + data->offset;
+    // memcpy(data->buffer, mapped+ data->offset, data->size);
+
+    
+    pthread_mutex_lock(&thread_mutex);
+    over_count++;
+    if(over_count==NUM_THREADS){
+        pthread_cond_signal(&read_over);
+
+    }
+    // pthread_cond_signal(&read_over);
+    pthread_mutex_unlock(&thread_mutex);
+    // printf("Thread %d read %zu bytes at offset %lld\n", data->thread_id, data->size, data->offset);
+
+    return NULL;
+}
 // 生产者线程函数
 void *producer_func(void *arg) {
     
@@ -19072,14 +19106,45 @@ void *producer_func(void *arg) {
                     size_t  offset = (intptr_t)(uintptr_t)src->extra;
                     size_t size = ggml_nbytes(src); 
                     void *data =malloc( size); 
-                    fseek(fout, offset, SEEK_SET);
-                    fread(data, 1, size, fout);
+                    if(size<1024*1024*5){
+                        fseek(fout, offset, SEEK_SET);
+                        fread(data, 1, size, fout);
+                        // memcpy(data, mapped+offset, size);
+                        printf("read\n");
+
+                    }else{
+                        thread_args args[NUM_THREADS];
+                        pthread_t threads[NUM_THREADS];
+                        size_t per_thread_size = size / NUM_THREADS;
+                        size_t remaining_data = size % NUM_THREADS;
+                        for (int i = 0; i < NUM_THREADS; ++i) {
+                            args[i].thread_id=i;
+                            args[i].offset = offset + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+                            args[i].size = per_thread_size + (i < remaining_data ? 1 : 0);
+                            args[i].buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+        
+                            pThreadPool->AddWorkUnlimit(pThreadPool, read_data, &args[i]);
+                        }
+                        pthread_mutex_lock(&thread_mutex);
+                        while(over_count!=NUM_THREADS){
+                            // printf("overcount:%d\n",over_count);
+                            pthread_cond_wait(&read_over, &thread_mutex);
+
+                        }
+                        over_count=0;
+                        pthread_mutex_unlock(&thread_mutex);
+                        
+                        printf("read\n");
+
+                    }
+                    
+                    
                     // 获取互斥锁
                     pthread_mutex_lock(&mutex);
                     
                     // 等待直到缓冲区有空间
                     while (count == GGML_MAX_SRC) {
-                        printf("Producer: Buffer is full. Waiting...\n");
+                        // printf("Producer: Buffer is full. Waiting...\n");
                         pthread_cond_wait(&empty, &mutex);
                     }
                     
@@ -19095,7 +19160,7 @@ void *producer_func(void *arg) {
                     }
                     count++;
                     
-                    printf("Producer: Produced data: %d\n", data);
+                    // printf("Producer: Produced data: %d\n", data);
                     
                     // 唤醒等待的消费者线程
                     pthread_cond_signal(&full);
@@ -19120,7 +19185,7 @@ void *producer_func(void *arg) {
 
 
 void load_tensor(struct ggml_tensor *cur){
-    const char *filename ="/mnt/pmem/lmsys/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf";
+    const char *filename ="/home/chenyunling/cLLama-CPU/llama.cpp/vicuna-7B-v1.5-F16.gguf";
     off_t offset = (intptr_t)(uintptr_t)cur->extra;
     size_t size = ggml_nbytes(cur);
 }
@@ -19165,7 +19230,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                     
                     // 等待直到缓冲区有数据
                     while (head == NULL) {
-                        printf("Consumer: Buffer is empty. Waiting...\n");
+                        // printf("Consumer: Buffer is empty. Waiting...\n");
                         pthread_cond_wait(&full, &mutex);
                     }
                     
@@ -19181,7 +19246,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         
                     count--;
                     
-                    printf("Consumer: Consumed data: %d\n", datas[i]);
+                    // printf("Consumer: Consumed data: %d\n", datas[i]);
                     
                     // 唤醒等待的生产者线程
                     pthread_cond_signal(&empty);
@@ -19309,7 +19374,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         allCores = getAllCores();
         init_shared_groups(allCores, &shared_groups_level2, &count2,&shared_groups_level3,&count3);//获取系统共享2级3级cache的核心组
         init_cores(&cores,allCores,&shared_groups_level2,count2,&shared_groups_level3,count3);//记录每个核心共享2级3级cache的共享组
-        pThreadPool = ThreadPoolConstruct(allCores+2, allCores+2);//创建线程池
+        pThreadPool = ThreadPoolConstruct(allCores*2+2, allCores*2+2);//创建线程池
         pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);//监控线程，查看空闲核心
         
         nowThreadCount = getIdleCoresCount(cores,allCores);//设置第一次推理的核心数
@@ -19319,9 +19384,33 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         //coolling-todo：改成从上层传下来的文件名
         const char *filename ="/mnt/pmem/lmsys/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf";
         fout = ggml_fopen(filename, "r");//打开文件，用于后面加载权重
+        for(int i=0;i<NUM_THREADS;i++){
+            fouts[i] = ggml_fopen(filename, "r");
+        }
         if (!fout) {
             fprintf(stderr, "%s: failed to open %s: %s\n", __func__, filename, strerror(errno));
             return;
+        }
+        // 获取文件描述符
+        int fd = fileno(fout);
+        if (fd == -1) {
+            perror("fileno");
+            fclose(fout);
+            return EXIT_FAILURE;
+        }
+        // 获取文件大小
+        struct stat sb;
+        if (fstat(fd, &sb) == -1) {
+            perror("fstat");
+            fclose(fout);
+            return EXIT_FAILURE;
+        }
+        // 映射文件
+        mapped = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (mapped == MAP_FAILED) {
+            perror("mmap");
+            fclose(fout);
+            return EXIT_FAILURE;
         }
         pThreadPool->AddWorkUnlimit(pThreadPool, producer_func, NULL);//生产者线程
     }
