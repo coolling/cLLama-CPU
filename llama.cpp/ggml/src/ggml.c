@@ -18965,6 +18965,8 @@ static bool gguf_fread_el(FILE * file, void * dst, size_t size, size_t * offset)
     *offset += n;
     return n == size;
 }
+
+//coolling：用于动态线程数
 typedef struct {
     pthread_mutex_t lock;
     pthread_cond_t cond;
@@ -19034,62 +19036,95 @@ void print_cores_and_shared_groups() {
     }
     printf("----------------------------------------------\n");
 }
+//coolling：用于文件操作
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-int read_file_segment(const char *filename, off_t offset, size_t size, void *data) {
-    data=malloc(size);
-    int fd = open(filename, O_RDONLY);
-    if (fd == -1) {
-        perror("open");
-        return 1;
-    }
+FILE * fout;
+void * datas[GGML_MAX_SRC];
 
-    // 移动文件指针到指定的偏移量
-    if (lseek(fd, offset, SEEK_SET) == (off_t)-1) {
-        perror("lseek");
-        close(fd);
-        return 1;
-    }
+//coolling：用于异步加载
+// 链表节点
+typedef struct Node {
+    void* data;
+    struct Node *next;
+} Node;
+// 全局变量
+Node *head = NULL;                  // 指向链表头部的指针
+Node *tail = NULL;                  // 指向链表尾部的指针
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;  // 互斥锁
+pthread_cond_t empty = PTHREAD_COND_INITIALIZER;    // 缓冲区为空的条件变量
+pthread_cond_t full = PTHREAD_COND_INITIALIZER;     // 缓冲区已满的条件变量
+int count = 0;                      // 缓冲区当前数据项的数量
+struct ggml_cgraph * global_cgraph=NULL;
+// 生产者线程函数
+void *producer_func(void *arg) {
+    
+    while(1){
+        for (int node_n = 0; node_n < global_cgraph->n_nodes; node_n++) {
+            struct ggml_tensor *node = global_cgraph->nodes[node_n];
+            
+            // 生成数据项
+            for(int i=0;i<GGML_MAX_SRC;i++){
+                struct ggml_tensor * src = node->src[i];
+                // const auto * weight = get_weight(ggml_get_name(src0));
+                if(src!=NULL&&src->extra!=0){
+                    size_t  offset = (intptr_t)(uintptr_t)src->extra;
+                    size_t size = ggml_nbytes(src); 
+                    void *data =malloc( size); 
+                    fseek(fout, offset, SEEK_SET);
+                    fread(data, 1, size, fout);
+                    // 获取互斥锁
+                    pthread_mutex_lock(&mutex);
+                    
+                    // 等待直到缓冲区有空间
+                    while (count == GGML_MAX_SRC) {
+                        printf("Producer: Buffer is full. Waiting...\n");
+                        pthread_cond_wait(&empty, &mutex);
+                    }
+                    
+                    // 将数据项放入缓冲区,尾插法
+                    Node *new_node = (Node *)malloc(sizeof(Node));
+                    new_node->data = data;
+                    new_node->next = NULL;
+                    if (tail == NULL) { // 队列为空时，新节点既是头也是尾
+                        head = tail = new_node;
+                    } else {
+                        tail->next = new_node;
+                        tail = new_node;
+                    }
+                    count++;
+                    
+                    printf("Producer: Produced data: %d\n", data);
+                    
+                    // 唤醒等待的消费者线程
+                    pthread_cond_signal(&full);
+                    
+                    // 释放互斥锁
+                    pthread_mutex_unlock(&mutex);
 
-    // 读取指定大小的数据
-    ssize_t bytesRead = 0;
-    while (bytesRead < size) {
-        printf("byteread!!\n");
-        ssize_t result = read(fd, (uint8_t *)data + bytesRead, size - bytesRead);
-        if (result == -1) {
-            perror("read");
-            close(fd);
-            return 1;
+                    
+                }
+            }
+        
         }
-        if (result == 0) {
-            break; // 文件末尾
-        }
-        bytesRead += result;
+    
+       
+        
+        
     }
-
-    if (bytesRead < size) {
-        fprintf(stderr, "Failed to read the entire segment, only %zd bytes read\n", bytesRead);
-        close(fd);
-        return 1;
-    }
-
-    // 关闭文件
-    close(fd);
-
-    return 0;
+    
+    pthread_exit(NULL);
 }
+
+
 
 void load_tensor(struct ggml_tensor *cur){
     const char *filename ="/mnt/pmem/lmsys/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf";
     off_t offset = (intptr_t)(uintptr_t)cur->extra;
     size_t size = ggml_nbytes(cur);
-    read_file_segment(filename,offset,size,cur->data);
-    
-
 }
-FILE * fout;
-void * datas[GGML_MAX_SRC];
+
 static thread_ret_t ggml_graph_compute_thread(void *data) {
     struct ggml_compute_state *state = (struct ggml_compute_state *)data;
 
@@ -19125,19 +19160,37 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                 struct ggml_tensor * src = node->src[i];
                 // const auto * weight = get_weight(ggml_get_name(src0));
                 if(src!=NULL&&src->extra!=0){
+                    // 获取互斥锁
+                    pthread_mutex_lock(&mutex);
                     
+                    // 等待直到缓冲区有数据
+                    while (head == NULL) {
+                        printf("Consumer: Buffer is empty. Waiting...\n");
+                        pthread_cond_wait(&full, &mutex);
+                    }
+                    
+                    // 从缓冲区取出数据项
+                    Node *temp = head;
+                    head = head->next;
+                    if (head == NULL) {
+                        tail = NULL;
+                    }
+                    free(datas[i]);
+                    datas[i] = temp->data;
+                    free(temp);
+        
+                    count--;
+                    
+                    printf("Consumer: Consumed data: %d\n", datas[i]);
+                    
+                    // 唤醒等待的生产者线程
+                    pthread_cond_signal(&empty);
+                    
+                    // 释放互斥锁
+                    pthread_mutex_unlock(&mutex);
                    
-                    size_t  offset = (intptr_t)(uintptr_t)src->extra;
-                    printf("src %d:end!! %d\n",i,offset);
-                    size_t size = ggml_nbytes(src); 
-                    // printf("a:%d;\n",src->data);
-                    datas[i]= realloc(datas[i], size); 
-                    // printf("b:%d;\n",data);
-                    fseek(fout, offset, SEEK_SET);
-                    fread(datas[i], 1, size, fout);
                     src->data=datas[i];
-                   
-                    
+
                 }
             }
         }
@@ -19160,7 +19213,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         }
         
         if (state->ith == all-1) { // 最后一个
-            
+            //coolling：用于动态线程数 由最后一个线程负责增减线程
     
             // printf("Thread:%d,all:%d;node:%d\n",state->ith,all,node_n);
             pthread_mutex_lock(&threadCounter.lock);
@@ -19169,8 +19222,6 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                 exits--;
                 nowThreadCount--;
                 state->shared->n_threads = nowThreadCount;
-                
-                
                 pthread_mutex_unlock(&threadCounter.lock);
                 pthread_mutex_lock(&threadCounter2.lock);
                 threadCounter2.count=1;
@@ -19202,10 +19253,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                         pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
                         // printf("\nidle core:%d,Creating new thread %d, new thread count: %d\n", idleCores,workers[j].ith, nowThreadCount);
                     }
-                    adds=0;
-                
-                
-                
+                    adds=0;   
             }
             pthread_mutex_unlock(&threadCounter.lock);
             pthread_mutex_lock(&threadCounter2.lock);
@@ -19213,8 +19261,6 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
             pthread_cond_broadcast(&threadCounter2.cond); // 或 pthread_cond_broadcast(&cond);
             pthread_mutex_unlock(&threadCounter2.lock);
         }else {
-            
-          
             pthread_mutex_lock(&threadCounter2.lock);
             while (!threadCounter2.count) {
                 pthread_cond_wait(&threadCounter2.cond, &threadCounter2.lock);
@@ -19230,11 +19276,10 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
     clear_numa_thread_affinity();
     clear_thread_affinity(pthread_self());
     update_last_assigned_time(cores,assigned_core);
-    // printf("exit %d \n",assigned_core);
-    // print_cores_and_shared_groups();
     return 0;
 }
 
+//coolling：用于动态线程数
 void* monitor(void* arg) {
     while (1) { 
         idleCores = getIdleCoresCount(cores,allCores);
@@ -19243,13 +19288,9 @@ void* monitor(void* arg) {
         if (idleCores < 5 && nowThreadCount > 1) {
             exits =1;
             adds=0;
-            // printf("exit!!!\n");
-            // print_cores_and_shared_groups();
         } else if (idleCores > 10) {
             exits=0;
             adds = idleCores-10;
-            // printf("add!!!\n");
-            // print_cores_and_shared_groups();
         }else{
             exits=0;
             adds=0;
@@ -19261,27 +19302,28 @@ void* monitor(void* arg) {
 }
 
 enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
-    ggml_graph_print(cgraph);
-    int n_threads = cplan->n_threads;
-    if (pThreadPool == NULL) {
+    // ggml_graph_print(cgraph);
+    int n_threads = cplan->n_threads;//总核数
+    if (pThreadPool == NULL) {//线程池为空，即还没开始第一次推理
+        global_cgraph=cgraph;//全局，用于生产者加载数据
         allCores = getAllCores();
-        init_shared_groups(allCores, &shared_groups_level2, &count2,&shared_groups_level3,&count3);
-        // printf("%d %d %d\n",allCores,count2,count3);
-       
-        init_cores(&cores,allCores,&shared_groups_level2,count2,&shared_groups_level3,count3);
-        pThreadPool = ThreadPoolConstruct(allCores, allCores);
-        pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);
-        nowThreadCount = getIdleCoresCount(cores,allCores);
+        init_shared_groups(allCores, &shared_groups_level2, &count2,&shared_groups_level3,&count3);//获取系统共享2级3级cache的核心组
+        init_cores(&cores,allCores,&shared_groups_level2,count2,&shared_groups_level3,count3);//记录每个核心共享2级3级cache的共享组
+        pThreadPool = ThreadPoolConstruct(allCores+2, allCores+2);//创建线程池
+        pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);//监控线程，查看空闲核心
+        
+        nowThreadCount = getIdleCoresCount(cores,allCores);//设置第一次推理的核心数
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
         // printf("init\n");
         // print_cores_and_shared_groups();
-        const char *filename ="/home/chenyunling/cLLama-CPU/llama.cpp/vicuna-7B-v1.5-F16.gguf";
-        fout = ggml_fopen(filename, "r");
-
+        //coolling-todo：改成从上层传下来的文件名
+        const char *filename ="/mnt/pmem/lmsys/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf";
+        fout = ggml_fopen(filename, "r");//打开文件，用于后面加载权重
         if (!fout) {
             fprintf(stderr, "%s: failed to open %s: %s\n", __func__, filename, strerror(errno));
             return;
         }
+        pThreadPool->AddWorkUnlimit(pThreadPool, producer_func, NULL);//生产者线程
     }
     struct ggml_compute_state_shared state_shared = {
         /*.cgraph                  =*/ cgraph,
@@ -19308,12 +19350,6 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
     }
     ggml_graph_compute_thread(&workers[0]);
-    printf("over!!\n");
-    // clear_numa_thread_affinity();
-    // clear_thread_affinity(pthread_self());
-    // update_last_assigned_time(cores,assigned_core);
-    // printf("exit %d \n",assigned_core);
-    // print_cores_and_shared_groups();
     return state_shared.ec;
 }
 

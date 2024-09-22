@@ -304,7 +304,7 @@ bool gpt_params_find_arg(int argc, char ** argv, const std::string & arg, gpt_pa
         params.n_threads = std::stoi(argv[i]);
         if (params.n_threads <= 0) {
             params.n_threads = std::thread::hardware_concurrency();
-            printf("!!!!hardware_concurrency%d\n",params.n_threads);
+            // printf("!!!!hardware_concurrency%d\n",params.n_threads);
         }
         return true;
     }

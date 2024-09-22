@@ -4238,12 +4238,12 @@ struct llama_model_loader {
     void get_offset(struct ggml_context * ctx) {
         for (struct ggml_tensor * cur = ggml_get_first_tensor(ctx); cur != nullptr; cur = ggml_get_next_tensor(ctx, cur)) {
             // 打印当前 tensor 的地址
-            printf("cur addr: %p\n", cur);
+            // printf("cur addr: %p\n", cur);
 
             // 获取 tensor 的名称并检查是否有效
             const char * name = ggml_get_name(cur);
             if (name != nullptr) {
-                printf("Tensor name: %s\n", name);
+                // printf("Tensor name: %s\n", name);
 
                 // 获取权重的偏移量
                 const auto * weight = get_weight(name);
@@ -4331,7 +4331,7 @@ struct llama_model_loader {
                 }
                 uint8_t * data = (uint8_t *) mapping->addr + weight->offs;
                 cur->extra=reinterpret_cast<void*>(static_cast<uintptr_t>(weight->offs));
-                printf("start1!! %d\n",weight->offs);
+                // printf("start1!! %d\n",weight->offs);
                 if (check_tensors) {
                     validation_result.emplace_back(std::async(std::launch::async, [cur, data, n_size] {
                         return std::make_pair(cur, ggml_validate_row_data(cur->type, data, n_size));

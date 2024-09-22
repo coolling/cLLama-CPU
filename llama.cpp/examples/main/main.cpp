@@ -130,7 +130,7 @@ static std::string chat_add_and_format(struct llama_model * model, std::vector<l
 }
 
 int main(int argc, char ** argv) {
-    printf("coolling test\n");
+    // printf("coolling test\n");
     gpt_params params;
     g_params = &params;
 
