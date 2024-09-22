@@ -3718,7 +3718,7 @@ static struct ggml_tensor * ggml_new_tensor_impl(
         }
     }
 
-    struct ggml_object * const obj_new = ggml_new_object(ctx, GGML_OBJECT_TYPE_TENSOR, GGML_TENSOR_SIZE + obj_alloc_size);
+    struct ggml_object * const obj_new =  (ctx, GGML_OBJECT_TYPE_TENSOR, GGML_TENSOR_SIZE + obj_alloc_size);
 
     // TODO: for recoverable errors, we would need to free the data allocated from the scratch buffer here
 

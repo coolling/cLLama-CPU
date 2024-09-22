@@ -761,7 +761,7 @@ struct ggml_backend_plan_cpu {
 
 GGML_CALL static ggml_backend_graph_plan_t ggml_backend_cpu_graph_plan_create(ggml_backend_t backend, const struct ggml_cgraph * cgraph) {
     struct ggml_backend_cpu_context * cpu_ctx = (struct ggml_backend_cpu_context *)backend->context;
-
+    printf("!!\n");
     struct ggml_backend_plan_cpu * cpu_plan = malloc(sizeof(struct ggml_backend_plan_cpu));
 
     cpu_plan->cplan = ggml_graph_plan(cgraph, cpu_ctx->n_threads);
@@ -802,7 +802,7 @@ GGML_CALL static enum ggml_status ggml_backend_cpu_graph_compute(ggml_backend_t 
     struct ggml_backend_cpu_context * cpu_ctx = (struct ggml_backend_cpu_context *)backend->context;
 
     struct ggml_cplan cplan = ggml_graph_plan(cgraph, cpu_ctx->n_threads);
-
+    // printf("cc\n\n");
     if (cpu_ctx->work_size < cplan.work_size) {
         free(cpu_ctx->work_data);
         cpu_ctx->work_data = malloc(cplan.work_size);

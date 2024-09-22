@@ -608,6 +608,9 @@ extern "C" {
         void * data;
 
         char name[GGML_MAX_NAME];
+        // bool isLoaded;
+        // bool needLoad;
+
 
         void * extra; // extra things e.g. for ggml-cuda.cu
 

@@ -9290,10 +9290,12 @@ static void ggml_compute_forward_add_bf16_f32(
 static void ggml_compute_forward_add_f16_f16(
         const struct ggml_compute_params * params,
         struct ggml_tensor * dst) {
-
+    printf("!!\n");
     const struct ggml_tensor * src0 = dst->src[0];
     const struct ggml_tensor * src1 = dst->src[1];
-
+    if(src0->data==0){
+        printf("omg!!!!\n");
+    }
     GGML_ASSERT(ggml_are_same_shape(src0, src1) && ggml_are_same_shape(src0, dst));
 
     const int ith = params->ith;
@@ -9810,7 +9812,7 @@ static void ggml_compute_forward_add1_bf16_bf16(
 
     GGML_ASSERT(ggml_are_same_shape(src0, dst));
     GGML_ASSERT(ggml_is_scalar(src1));
-
+   
     // scalar to add
     const float v = GGML_BF16_TO_FP32(*(ggml_bf16_t *) src1->data);
 
@@ -16672,11 +16674,15 @@ static void ggml_compute_forward_cross_entropy_loss_back(
 
 static void ggml_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor) {
     GGML_ASSERT(params);
+    
+    // if(src0->data==0){
+    //     printf("ggml_compute_forward omg!!!!\n");
+    // }
 
     if (tensor->op == GGML_OP_NONE || ggml_is_empty(tensor)) {
         return;
     }
-
+    
     switch (tensor->op) {
         case GGML_OP_DUP:
             {
@@ -17023,7 +17029,7 @@ void ggml_hash_set_free(struct ggml_hash_set * hash_set) {
     GGML_FREE(hash_set->used);
     GGML_FREE(hash_set->keys);
 }
-
+//找到一个大于或等于给定最小尺寸 min_sz 的最接近的素数。
 size_t ggml_hash_size(size_t min_sz) {
     // next primes after powers of two
     static const size_t primes[] = {
@@ -18092,7 +18098,7 @@ static void ggml_build_forward_impl(struct ggml_cgraph * cgraph, struct ggml_ten
         // TODO: this branch isn't accessible anymore, maybe move this to ggml_build_forward_expand
         ggml_graph_clear(cgraph);
     }
-
+    
     const int n0 = cgraph->n_nodes;
 
     ggml_visit_parents(cgraph, tensor);
@@ -18154,7 +18160,7 @@ void ggml_build_backward_expand(struct ggml_context * ctx, struct ggml_cgraph * 
 
     ggml_hash_set_free(&zero_table);
 }
-
+//在动态内存分配时，确保分配的内存块满足特定的对齐要求
 static void * incr_ptr_aligned(void ** p, size_t size, size_t align) {
     void * ptr = *p;
     ptr = (void *) GGML_PAD((uintptr_t) ptr, align);
@@ -18188,6 +18194,7 @@ size_t ggml_graph_overhead(void) {
 
 struct ggml_cgraph * ggml_new_graph_custom(struct ggml_context * ctx, size_t size, bool grads) {
     const size_t obj_size = ggml_graph_nbytes(size, grads);
+    // printf("\n\ngraph size:!!!!%d\n\n",obj_size);
     struct ggml_object * obj = ggml_new_object(ctx, GGML_OBJECT_TYPE_GRAPH, obj_size);
     struct ggml_cgraph * cgraph = (struct ggml_cgraph *) ((char *) ctx->mem_buffer + obj->offs);
 
@@ -18953,7 +18960,11 @@ struct ggml_cplan ggml_graph_plan(const struct ggml_cgraph * cgraph, int n_threa
 
     return cplan;
 }
-
+static bool gguf_fread_el(FILE * file, void * dst, size_t size, size_t * offset) {
+    const size_t n = fread(dst, 1, size, file);
+    *offset += n;
+    return n == size;
+}
 typedef struct {
     pthread_mutex_t lock;
     pthread_cond_t cond;
@@ -19023,6 +19034,62 @@ void print_cores_and_shared_groups() {
     }
     printf("----------------------------------------------\n");
 }
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+int read_file_segment(const char *filename, off_t offset, size_t size, void *data) {
+    data=malloc(size);
+    int fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+
+    // 移动文件指针到指定的偏移量
+    if (lseek(fd, offset, SEEK_SET) == (off_t)-1) {
+        perror("lseek");
+        close(fd);
+        return 1;
+    }
+
+    // 读取指定大小的数据
+    ssize_t bytesRead = 0;
+    while (bytesRead < size) {
+        printf("byteread!!\n");
+        ssize_t result = read(fd, (uint8_t *)data + bytesRead, size - bytesRead);
+        if (result == -1) {
+            perror("read");
+            close(fd);
+            return 1;
+        }
+        if (result == 0) {
+            break; // 文件末尾
+        }
+        bytesRead += result;
+    }
+
+    if (bytesRead < size) {
+        fprintf(stderr, "Failed to read the entire segment, only %zd bytes read\n", bytesRead);
+        close(fd);
+        return 1;
+    }
+
+    // 关闭文件
+    close(fd);
+
+    return 0;
+}
+
+void load_tensor(struct ggml_tensor *cur){
+    const char *filename ="/mnt/pmem/lmsys/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf";
+    off_t offset = (intptr_t)(uintptr_t)cur->extra;
+    size_t size = ggml_nbytes(cur);
+    read_file_segment(filename,offset,size,cur->data);
+    
+
+}
+FILE * fout;
+void * datas[GGML_MAX_SRC];
 static thread_ret_t ggml_graph_compute_thread(void *data) {
     struct ggml_compute_state *state = (struct ggml_compute_state *)data;
 
@@ -19052,6 +19119,29 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
     for (int node_n = state->start_node; node_n < cgraph->n_nodes; node_n++) {
         // printf("now node:%d;all t:%d\n",node_n,nowThreadCount);
         struct ggml_tensor *node = cgraph->nodes[node_n];
+        if (state->ith == 0) { // 
+        
+            for(int i=0;i<GGML_MAX_SRC;i++){
+                struct ggml_tensor * src = node->src[i];
+                // const auto * weight = get_weight(ggml_get_name(src0));
+                if(src!=NULL&&src->extra!=0){
+                    
+                   
+                    size_t  offset = (intptr_t)(uintptr_t)src->extra;
+                    printf("src %d:end!! %d\n",i,offset);
+                    size_t size = ggml_nbytes(src); 
+                    // printf("a:%d;\n",src->data);
+                    datas[i]= realloc(datas[i], size); 
+                    // printf("b:%d;\n",data);
+                    fseek(fout, offset, SEEK_SET);
+                    fread(datas[i], 1, size, fout);
+                    src->data=datas[i];
+                   
+                    
+                }
+            }
+        }
+        ggml_barrier(state->shared);
         ggml_compute_forward(&params, node);
 
         if (state->ith == 0 && cplan->abort_callback && cplan->abort_callback(cplan->abort_callback_data)) {
@@ -19070,6 +19160,8 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         }
         
         if (state->ith == all-1) { // 最后一个
+            
+    
             // printf("Thread:%d,all:%d;node:%d\n",state->ith,all,node_n);
             pthread_mutex_lock(&threadCounter.lock);
             if (exits>0&& nowThreadCount > 4) {
@@ -19169,6 +19261,7 @@ void* monitor(void* arg) {
 }
 
 enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
+    ggml_graph_print(cgraph);
     int n_threads = cplan->n_threads;
     if (pThreadPool == NULL) {
         allCores = getAllCores();
@@ -19182,6 +19275,13 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
         // printf("init\n");
         // print_cores_and_shared_groups();
+        const char *filename ="/home/chenyunling/cLLama-CPU/llama.cpp/vicuna-7B-v1.5-F16.gguf";
+        fout = ggml_fopen(filename, "r");
+
+        if (!fout) {
+            fprintf(stderr, "%s: failed to open %s: %s\n", __func__, filename, strerror(errno));
+            return;
+        }
     }
     struct ggml_compute_state_shared state_shared = {
         /*.cgraph                  =*/ cgraph,
@@ -19208,7 +19308,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
     }
     ggml_graph_compute_thread(&workers[0]);
-
+    printf("over!!\n");
     // clear_numa_thread_affinity();
     // clear_thread_affinity(pthread_self());
     // update_last_assigned_time(cores,assigned_core);
@@ -19219,7 +19319,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
 
 enum ggml_status ggml_graph_compute_with_ctx(struct ggml_context * ctx, struct ggml_cgraph * cgraph, int n_threads) {
     struct ggml_cplan cplan = ggml_graph_plan(cgraph, n_threads);//调用 ggml_graph_plan 函数为计算图和指定的线程数生成一个执行计划 cplan
-
+    printf("test3\n");
     struct ggml_object * obj = ggml_new_object(ctx, GGML_OBJECT_TYPE_WORK_BUFFER, cplan.work_size);
 
     cplan.work_data = (uint8_t *)ctx->mem_buffer + obj->offs;
@@ -19460,6 +19560,7 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
 }
 
 struct ggml_cgraph * ggml_graph_import(const char * fname, struct ggml_context ** ctx_data, struct ggml_context ** ctx_eval) {
+    printf("import\n");
     assert(*ctx_data == NULL);
     assert(*ctx_eval == NULL);
 
@@ -19975,7 +20076,7 @@ static enum ggml_opt_result ggml_opt_adam(
 
     // these will store the parameters we want to optimize
     struct ggml_tensor * ps[GGML_MAX_PARAMS];
-
+    printf("test1\n");
     int np = 0;
     int64_t nx = 0;
     for (int i = 0; i < gf->n_nodes; ++i) {
@@ -20335,7 +20436,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
             return GGML_OPT_RESULT_INVALID_WOLFE;
         }
     }
-
+printf("test2\n");
     const int m = params.lbfgs.m;
 
     // these will store the parameters we want to optimize
@@ -20776,7 +20877,7 @@ enum ggml_opt_result ggml_opt_resume(
     // build forward + backward compute graphs
     struct ggml_cgraph * gf = ggml_new_graph_custom(ctx, opt->params.graph_size, true);
     ggml_build_forward_expand(gf, f);
-
+    // printf("test!!\n");
     struct ggml_cgraph * gb = ggml_graph_dup(ctx, gf);
     ggml_build_backward_expand(ctx, gf, gb, true);
 
@@ -21069,11 +21170,7 @@ static void gguf_tensor_info_sanitize(struct gguf_tensor_info * info) {
     GGML_ASSERT(INT64_MAX/info->ne[3] > info->ne[0]*info->ne[1]*info->ne[2]);
 }
 
-static bool gguf_fread_el(FILE * file, void * dst, size_t size, size_t * offset) {
-    const size_t n = fread(dst, 1, size, file);
-    *offset += n;
-    return n == size;
-}
+
 
 static bool gguf_fread_str(FILE * file, struct gguf_str * p, size_t * offset) {
     p->n    = 0;
