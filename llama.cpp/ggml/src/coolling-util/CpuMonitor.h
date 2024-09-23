@@ -11,7 +11,7 @@
 #include <sched.h>
 #include <stdbool.h>
 #define BUFFER_SIZE 128
-#define THRESHOLD 93.0
+#define THRESHOLD 50.0
 // 定义 CPU 核心结构体
 typedef struct Core {
     int id;

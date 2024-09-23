@@ -19042,7 +19042,7 @@ void print_cores_and_shared_groups() {
 #include <sys/stat.h>
 FILE * fout;
 void *mapped;
-void * datas[GGML_MAX_SRC];
+void * datas;
 typedef struct {
     int thread_id;
     off_t offset;
@@ -19054,6 +19054,8 @@ typedef struct {
 // 链表节点
 typedef struct Node {
     void* data;
+    off_t offset;
+    size_t size;
     struct Node *next;
 } Node;
 // 全局变量
@@ -19067,8 +19069,11 @@ pthread_cond_t full = PTHREAD_COND_INITIALIZER;     // 缓冲区已满的条件�
 int count = 0;                      // 缓冲区当前数据项的数量
 int over_count=0; //判断是否读取完
 struct ggml_cgraph * global_cgraph=NULL;
-int NUM_THREADS=40;
-FILE * fouts[40];
+int NUM_THREADS=30;
+FILE * fouts[30];
+char last_name[100]="";
+off_t now_offset=-1;
+size_t now_size=-1;
 void *read_data(void *args) {
     thread_args *data = (thread_args *)args;
     // 定位到文件的指定位置
@@ -19091,9 +19096,50 @@ void *read_data(void *args) {
 
     return NULL;
 }
+
+#include <stdio.h>
+#include <string.h>
+
+// 函数用于提取并比较两个字符串中 "blk" 后的两个点之间的内容
+int compare_blk_content(const char *str1, const char *str2) {
+    const char *start1, *end1, *start2, *end2;
+    char content1[100], content2[100];
+    int len1, len2;
+
+    // 查找 "blk" 后的两个点之间的内容
+    start1 = strstr(str1, "blk.") + 4; // 跳过 "blk."
+    end1 = strchr(start1, '.');
+    start2 = strstr(str2, "blk.") + 4;
+    end2 = strchr(start2, '.');
+
+    if (end1 && end2) {
+        len1 = end1 - start1;
+        len2 = end2 - start2;
+
+        // 确保不会超出数组界限
+        if (len1 < sizeof(content1) && len2 < sizeof(content2)) {
+            strncpy(content1, start1, len1);
+            content1[len1] = '\0';
+            strncpy(content2, start2, len2);
+            content2[len2] = '\0';
+
+            // 比较两个子串
+            return strcmp(content1, content2) == 0;
+        }
+    }
+
+    return 0; // 如果没有找到或超出界限，则返回 0
+}
+
 // 生产者线程函数
 void *producer_func(void *arg) {
+    size_t  offsetl=0;
+    size_t  offsetr=0;
+    char *  name;
+    size_t  offset;
+    size_t  size;
     
+    thread_args args[NUM_THREADS];
     while(1){
         for (int node_n = 0; node_n < global_cgraph->n_nodes; node_n++) {
             struct ggml_tensor *node = global_cgraph->nodes[node_n];
@@ -19103,23 +19149,33 @@ void *producer_func(void *arg) {
                 struct ggml_tensor * src = node->src[i];
                 // const auto * weight = get_weight(ggml_get_name(src0));
                 if(src!=NULL&&src->extra!=0){
-                    size_t  offset = (intptr_t)(uintptr_t)src->extra;
-                    size_t size = ggml_nbytes(src); 
-                    void *data =malloc( size); 
-                    if(size<1024*1024*5){
-                        fseek(fout, offset, SEEK_SET);
-                        fread(data, 1, size, fout);
-                        // memcpy(data, mapped+offset, size);
-                        printf("read\n");
+                    name = ggml_get_name(src);
+                    offset = (intptr_t)(uintptr_t)src->extra;
+                    size = ggml_nbytes(src); 
+                    
+                    if(strcmp(last_name, "") == 0||(strstr(last_name, "blk")== NULL&&strstr(name, "blk")== NULL)||(strstr(last_name, "blk")!= NULL&&strstr(name, "blk")!= NULL&&compare_blk_content(last_name,name))){
+                        if(strcmp(last_name, "") == 0){
+                            offsetl=offset;
+                            offsetr=offset+size;
 
+                        }else{
+                            offsetl=fmin(offsetl,offset);
+                            offsetr=fmax(offsetr,offset+size);
+                        }
+                        
+                        strcpy(last_name, name);
+        
                     }else{
-                        thread_args args[NUM_THREADS];
-                        pthread_t threads[NUM_THREADS];
-                        size_t per_thread_size = size / NUM_THREADS;
-                        size_t remaining_data = size % NUM_THREADS;
+                        // printf("size: %ld ;offset: %ld\n", offsetr-offsetl,offsetl);
+                        // printf("Tensor name: %s\n", name);
+                        //加载数据
+                        size_t load_size=offsetr-offsetl;
+                        void *data =malloc( load_size); 
+                        size_t per_thread_size = load_size / NUM_THREADS;
+                        size_t remaining_data = load_size % NUM_THREADS;
                         for (int i = 0; i < NUM_THREADS; ++i) {
                             args[i].thread_id=i;
-                            args[i].offset = offset + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+                            args[i].offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
                             args[i].size = per_thread_size + (i < remaining_data ? 1 : 0);
                             args[i].buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
         
@@ -19127,52 +19183,107 @@ void *producer_func(void *arg) {
                         }
                         pthread_mutex_lock(&thread_mutex);
                         while(over_count!=NUM_THREADS){
-                            // printf("overcount:%d\n",over_count);
                             pthread_cond_wait(&read_over, &thread_mutex);
 
                         }
                         over_count=0;
+
+                        //插入数据
                         pthread_mutex_unlock(&thread_mutex);
+                            strcpy(last_name, name);
                         
-                        printf("read\n");
+                        // 获取互斥锁
+                        pthread_mutex_lock(&mutex);
+                        
+                        // 等待直到缓冲区有空间
+                        while (count == 3) {
+                            printf("Producer: Buffer is full. Waiting...\n");
+                            pthread_cond_wait(&empty, &mutex);
+                        }
+                        
+                        // 将数据项放入缓冲区,尾插法
+                        Node *new_node = (Node *)malloc(sizeof(Node));
+                        new_node->data = data;
+                        new_node->offset=offsetl;
+                        new_node->size=offsetr-offsetl;
+                        new_node->next = NULL;
+                        if (tail == NULL) { // 队列为空时，新节点既是头也是尾
+                            head = tail = new_node;
+                        } else {
+                            tail->next = new_node;
+                            tail = new_node;
+                        }
+                        count++;
+                        
+                        printf("Producer: Produced data: %d;offset:%ld;size:%ld\n", data,offsetl,offsetr-offsetl);
+                        
+                        // 唤醒等待的消费者线程
+                        pthread_cond_signal(&full);
+                        
+                        // 释放互斥锁
+                        pthread_mutex_unlock(&mutex);
+                        offsetl=offset;
+                        offsetr=offset+size;
 
                     }
                     
                     
-                    // 获取互斥锁
-                    pthread_mutex_lock(&mutex);
-                    
-                    // 等待直到缓冲区有空间
-                    while (count == GGML_MAX_SRC) {
-                        // printf("Producer: Buffer is full. Waiting...\n");
-                        pthread_cond_wait(&empty, &mutex);
-                    }
-                    
-                    // 将数据项放入缓冲区,尾插法
-                    Node *new_node = (Node *)malloc(sizeof(Node));
-                    new_node->data = data;
-                    new_node->next = NULL;
-                    if (tail == NULL) { // 队列为空时，新节点既是头也是尾
-                        head = tail = new_node;
-                    } else {
-                        tail->next = new_node;
-                        tail = new_node;
-                    }
-                    count++;
-                    
-                    // printf("Producer: Produced data: %d\n", data);
-                    
-                    // 唤醒等待的消费者线程
-                    pthread_cond_signal(&full);
-                    
-                    // 释放互斥锁
-                    pthread_mutex_unlock(&mutex);
 
                     
                 }
             }
         
         }
+        // printf("size: %ld ;offset: %ld\n", offsetr-offsetl,offsetl);
+        size_t load_size=offsetr-offsetl;
+        void *data =malloc( load_size); 
+        size_t per_thread_size = load_size / NUM_THREADS;
+        size_t remaining_data = load_size % NUM_THREADS;
+        for (int i = 0; i < NUM_THREADS; ++i) {
+            args[i].thread_id=i;
+            args[i].offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+            args[i].size = per_thread_size + (i < remaining_data ? 1 : 0);
+            args[i].buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+            pThreadPool->AddWorkUnlimit(pThreadPool, read_data, &args[i]);
+        }
+        pthread_mutex_lock(&thread_mutex);
+        while(over_count!=NUM_THREADS){
+            // printf("overcount:%d\n",over_count);
+            pthread_cond_wait(&read_over, &thread_mutex);
+        }
+        over_count=0;
+        pthread_mutex_unlock(&thread_mutex);
+        strcpy(last_name, "");
+        // 获取互斥锁
+        pthread_mutex_lock(&mutex);
+        
+        // 等待直到缓冲区有空间
+        while (count == 3) {
+            printf("Producer: Buffer is full. Waiting...\n");
+            pthread_cond_wait(&empty, &mutex);
+        }
+        
+        // 将数据项放入缓冲区,尾插法
+        Node *new_node = (Node *)malloc(sizeof(Node));
+        new_node->data = data;
+        new_node->next = NULL;
+        new_node->offset=offsetl;
+        new_node->size=offsetr-offsetl;
+        if (tail == NULL) { // 队列为空时，新节点既是头也是尾
+            head = tail = new_node;
+        } else {
+            tail->next = new_node;
+            tail = new_node;
+        }
+        count++;
+        
+        printf("Producer: Produced data: %d ;size : %ld\n", data,offsetr-offsetl);
+        
+        // 唤醒等待的消费者线程
+        pthread_cond_signal(&full);
+        
+        // 释放互斥锁
+        pthread_mutex_unlock(&mutex);
     
        
         
@@ -19225,36 +19336,53 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                 struct ggml_tensor * src = node->src[i];
                 // const auto * weight = get_weight(ggml_get_name(src0));
                 if(src!=NULL&&src->extra!=0){
-                    // 获取互斥锁
-                    pthread_mutex_lock(&mutex);
+                    off_t offset= (intptr_t)(uintptr_t)src->extra;
+                    size_t size= ggml_nbytes(src); 
+                    // printf("data: offset:%ld;size:%ld\n",offset,size);
+                    if(now_offset!=-1&&now_offset<=offset&&offset+size<=now_offset+now_size){
+                        src->data=datas+offset-now_offset;
+
+                    }else{
+                        // 获取互斥锁
+                        pthread_mutex_lock(&mutex);
+                        
+                        // 等待直到缓冲区有数据
+                        while (head == NULL) {
+                            printf("Consumer: Buffer is empty. Waiting...\n");
+                            pthread_cond_wait(&full, &mutex);
+                        }
+                        
+                        // 从缓冲区取出数据项
+                        Node *temp = head;
+                        head = head->next;
+                        if (head == NULL) {
+                            tail = NULL;
+                        }
+                        free(datas);
+                        datas = temp->data;
+                        now_offset=temp->offset;
+                        now_size=temp->size;
+                        printf("Consumer: Consumed data: %d;offset:%ld;size:%ld\n", datas,now_offset,now_size);
+                        
+                        
+                        free(temp);
+            
+                        count--;
+                        
+                        
+                        // 唤醒等待的生产者线程
+                        pthread_cond_signal(&empty);
+                        
+                        // 释放互斥锁
+                        pthread_mutex_unlock(&mutex);
                     
-                    // 等待直到缓冲区有数据
-                    while (head == NULL) {
-                        // printf("Consumer: Buffer is empty. Waiting...\n");
-                        pthread_cond_wait(&full, &mutex);
+                        src->data=datas+offset-now_offset;
+
                     }
+
+
+
                     
-                    // 从缓冲区取出数据项
-                    Node *temp = head;
-                    head = head->next;
-                    if (head == NULL) {
-                        tail = NULL;
-                    }
-                    free(datas[i]);
-                    datas[i] = temp->data;
-                    free(temp);
-        
-                    count--;
-                    
-                    // printf("Consumer: Consumed data: %d\n", datas[i]);
-                    
-                    // 唤醒等待的生产者线程
-                    pthread_cond_signal(&empty);
-                    
-                    // 释放互斥锁
-                    pthread_mutex_unlock(&mutex);
-                   
-                    src->data=datas[i];
 
                 }
             }

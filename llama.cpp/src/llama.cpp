@@ -4241,6 +4241,7 @@ struct llama_model_loader {
             // printf("cur addr: %p\n", cur);
 
             // 获取 tensor 的名称并检查是否有效
+            size_t n_size = ggml_nbytes(cur);
             const char * name = ggml_get_name(cur);
             if (name != nullptr) {
                 // printf("Tensor name: %s\n", name);
@@ -4254,6 +4255,7 @@ struct llama_model_loader {
 
                 // 设置额外的偏移量
                 cur->extra = reinterpret_cast<void*>(static_cast<uintptr_t>(weight->offs));
+                
             }
         }
     }
