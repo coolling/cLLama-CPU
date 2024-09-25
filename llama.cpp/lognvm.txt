@@ -1,0 +1,199 @@
+
+
+
+!!!!hardware_concurrency20
+20 1
+cool malloc 262144000 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1818226704;offset:741408;size:262144000
+wait time: 0.05 s
+Consumer: Consumed data: 1818226704;offset:741408;size:262144000
+cool malloc 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:262885408;size:404783104
+wait time: 0.26 s
+Consumer: Consumed data: 534736912;offset:262885408;size:404783104
+cool free 262144000 
+cool malloc 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:667668512;size:404783104
+wait time: 0.16 s
+Consumer: Consumed data: -807440368;offset:667668512;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:1072451616;size:404783104
+wait time: 0.09 s
+Consumer: Consumed data: 534736912;offset:1072451616;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:1477234720;size:404783104
+wait time: 0.15 s
+Consumer: Consumed data: -807440368;offset:1477234720;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:1882017824;size:404783104
+wait time: 0.09 s
+Consumer: Consumed data: 534736912;offset:1882017824;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:2286800928;size:404783104
+wait time: 0.09 s
+Consumer: Consumed data: -807440368;offset:2286800928;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:2691584032;size:404783104
+wait time: 0.10 s
+Consumer: Consumed data: 534736912;offset:2691584032;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:3096367136;size:404783104
+wait time: 0.11 s
+Consumer: Consumed data: -807440368;offset:3096367136;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:3501150240;size:404783104
+wait time: 0.13 s
+Consumer: Consumed data: 534736912;offset:3501150240;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:3905933344;size:404783104
+wait time: 0.11 s
+Consumer: Consumed data: -807440368;offset:3905933344;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:4310716448;size:404783104
+wait time: 0.09 s
+Consumer: Consumed data: 534736912;offset:4310716448;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:4715499552;size:404783104
+wait time: 0.08 s
+Consumer: Consumed data: -807440368;offset:4715499552;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:5120282656;size:404783104
+wait time: 0.08 s
+Consumer: Consumed data: 534736912;offset:5120282656;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:5525065760;size:404783104
+wait time: 0.09 s
+Consumer: Consumed data: -807440368;offset:5525065760;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:5929848864;size:404783104
+wait time: 0.08 s
+Consumer: Consumed data: 534736912;offset:5929848864;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:6334631968;size:404783104
+wait time: 0.10 s
+Consumer: Consumed data: -807440368;offset:6334631968;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:6739415072;size:404783104
+wait time: 0.08 s
+Consumer: Consumed data: 534736912;offset:6739415072;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:7144198176;size:404783104
+wait time: 0.12 s
+Consumer: Consumed data: -807440368;offset:7144198176;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:7548981280;size:404783104
+wait time: 0.12 s
+Consumer: Consumed data: 534736912;offset:7548981280;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:7953764384;size:404783104
+wait time: 0.12 s
+Consumer: Consumed data: -807440368;offset:7953764384;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:8358547488;size:404783104
+wait time: 0.10 s
+Consumer: Consumed data: 534736912;offset:8358547488;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:8763330592;size:404783104
+wait time: 0.08 s
+Consumer: Consumed data: -807440368;offset:8763330592;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:9168113696;size:404783104
+wait time: 0.05 s
+Consumer: Consumed data: 534736912;offset:9168113696;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:9572896800;size:404783104
+wait time: 0.07 s
+Consumer: Consumed data: -807440368;offset:9572896800;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:9977679904;size:404783104
+cool malloc 404783104 
+wait time: 0.06 s
+Consumer: Consumed data: 534736912;offset:9977679904;size:404783104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -404787184;offset:10382463008;size:404783104
+wait time: 0.15 s
+Consumer: Consumed data: -404787184;offset:10382463008;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -807440368;offset:10787246112;size:404783104
+cool malloc 404783104 
+wait time: 0.05 s
+Consumer: Consumed data: -807440368;offset:10787246112;size:404783104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:11192029216;size:404783104
+wait time: 0.11 s
+Consumer: Consumed data: 534736912;offset:11192029216;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -404787184;offset:11596812320;size:404783104
+wait time: 0.05 s
+Consumer: Consumed data: -404787184;offset:11596812320;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:12001595424;size:404783104
+wait time: 0.05 s
+Consumer: Consumed data: 534736912;offset:12001595424;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -404787184;offset:12406378528;size:404783104
+wait time: 0.07 s
+Consumer: Consumed data: -404787184;offset:12406378528;size:404783104
+cool reuse 404783104 
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 534736912;offset:12811161632;size:404783104
+wait time: 0.07 s
+Consumer: Consumed data: 534736912;offset:12811161632;size:404783104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -664817648 ;size : 262160384
+all load_time1: 0.07 s
+all load_time11 0: 3.65 s
+all load_time11 1: 3.76 s
+all load_time11 2: 3.82 s
+all load_time11 3: 3.86 s
+all load_time11 4: 3.85 s
+all load_time11 5: 3.92 s
+all load_time11 6: 3.89 s
+all load_time11 7: 3.84 s
+all load_time11 8: 3.72 s
+all load_time11 9: 3.58 s
+all load_time11 10: 3.74 s
+all load_time11 11: 3.83 s
+wait time: 0.07 s
+Consumer: Consumed data: -664817648;offset:13215944736;size:262160384
+cool reuse 404783104 
+all wait_time1: 3.27 s
+all wait_time2: 0.95 s
+all wait_time3: 0.00 s
+all time: 4.32 s
+Producer: Produced data: -404787184;offset:741408;size:262144000
+cool malloc 404783104 
+Producer: Produced data: 534736912;offset:262885408;size:404783104
+cool malloc 404783104 
+Producer: Buffer is full. Waiting...
+ hi

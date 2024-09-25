@@ -1,0 +1,454 @@
+
+
+
+!!!!hardware_concurrency20
+20 1
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413443600;offset:741408;size:666927104
+Consumer: Consumed data: 1413443600;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:667668512;size:809566208
+Consumer: Consumed data: 1539239952;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:1477234720;size:809566208
+Consumer: Consumed data: -1413550064;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:2286800928;size:809566208
+Consumer: Consumed data: 2071846928;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:3096367136;size:809566208
+Consumer: Consumed data: 1539239952;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:3905933344;size:809566208
+Consumer: Consumed data: -1413550064;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:4715499552;size:809566208
+Consumer: Consumed data: 2071846928;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:5525065760;size:809566208
+Consumer: Consumed data: 1539239952;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:6334631968;size:809566208
+Consumer: Consumed data: -1413550064;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7144198176;size:809566208
+Consumer: Consumed data: 1539239952;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:7953764384;size:809566208
+Consumer: Consumed data: 2071846928;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:8763330592;size:809566208
+Consumer: Consumed data: 1539239952;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:9572896800;size:809566208
+Consumer: Consumed data: -1413550064;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:10382463008;size:809566208
+Consumer: Consumed data: 2071846928;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:11192029216;size:809566208
+Consumer: Consumed data: 1539239952;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:12001595424;size:809566208
+Consumer: Consumed data: -1413550064;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 113.43 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 113.06 s
+all wait_time2: 0.39 s
+all wait_time3: 0.04 s
+all time: 114.53 s
+ hiConsumer: Buffer is empty. Waiting...
+Producer: Produced data: 1681879056;offset:741408;size:666927104
+Consumer: Consumed data: 1681879056;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:667668512;size:809566208
+Consumer: Consumed data: -1413550064;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:1477234720;size:809566208
+Consumer: Consumed data: 2071846928;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:2286800928;size:809566208
+Consumer: Consumed data: 1539239952;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:3096367136;size:809566208
+Consumer: Consumed data: -1413550064;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:3905933344;size:809566208
+Consumer: Consumed data: 1539239952;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:4715499552;size:809566208
+Consumer: Consumed data: 2071846928;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:5525065760;size:809566208
+Consumer: Consumed data: 1539239952;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:6334631968;size:809566208
+Consumer: Consumed data: -1413550064;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:7144198176;size:809566208
+Consumer: Consumed data: 2071846928;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7953764384;size:809566208
+Consumer: Consumed data: 1539239952;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:8763330592;size:809566208
+Consumer: Consumed data: -1413550064;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:9572896800;size:809566208
+Consumer: Consumed data: 2071846928;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:10382463008;size:809566208
+Consumer: Consumed data: 1539239952;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:11192029216;size:809566208
+Consumer: Consumed data: -1413550064;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:12001595424;size:809566208
+Consumer: Consumed data: 2071846928;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 110.41 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 109.14 s
+all wait_time2: 0.32 s
+all wait_time3: 0.03 s
+all time: 109.62 s
+keConsumer: Buffer is empty. Waiting...
+Producer: Produced data: 1681879056;offset:741408;size:666927104
+Consumer: Consumed data: 1681879056;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:667668512;size:809566208
+Consumer: Consumed data: -1413550064;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:1477234720;size:809566208
+Consumer: Consumed data: 1539239952;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:2286800928;size:809566208
+Consumer: Consumed data: -1413550064;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:3096367136;size:809566208
+Consumer: Consumed data: 1539239952;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:3905933344;size:809566208
+Consumer: Consumed data: 2071846928;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:4715499552;size:809566208
+Consumer: Consumed data: -1413550064;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:5525065760;size:809566208
+Consumer: Consumed data: 1539239952;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:6334631968;size:809566208
+Consumer: Consumed data: -1413550064;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:7144198176;size:809566208
+Consumer: Consumed data: 2071846928;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7953764384;size:809566208
+Consumer: Consumed data: 1539239952;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:8763330592;size:809566208
+Consumer: Consumed data: -1413550064;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:9572896800;size:809566208
+Consumer: Consumed data: 2071846928;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:10382463008;size:809566208
+Consumer: Consumed data: 1539239952;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:11192029216;size:809566208
+Consumer: Consumed data: -1413550064;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:12001595424;size:809566208
+Consumer: Consumed data: 1539239952;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 97.04 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 94.29 s
+all wait_time2: 0.34 s
+all wait_time3: 0.06 s
+all time: 94.85 s
+,Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1270910960;offset:741408;size:666927104
+Consumer: Consumed data: -1270910960;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:667668512;size:809566208
+Consumer: Consumed data: 1539239952;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:1477234720;size:809566208
+Consumer: Consumed data: -1413550064;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:2286800928;size:809566208
+Consumer: Consumed data: 2071846928;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:3096367136;size:809566208
+Consumer: Consumed data: 1539239952;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:3905933344;size:809566208
+Consumer: Consumed data: -1413550064;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:4715499552;size:809566208
+Consumer: Consumed data: 1539239952;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:5525065760;size:809566208
+Consumer: Consumed data: 2071846928;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:6334631968;size:809566208
+Consumer: Consumed data: -1413550064;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7144198176;size:809566208
+Consumer: Consumed data: 1539239952;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:7953764384;size:809566208
+Consumer: Consumed data: -1413550064;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:8763330592;size:809566208
+Consumer: Consumed data: 2071846928;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:9572896800;size:809566208
+Consumer: Consumed data: 1539239952;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:10382463008;size:809566208
+Consumer: Consumed data: -1413550064;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:11192029216;size:809566208
+Consumer: Consumed data: 2071846928;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:12001595424;size:809566208
+Consumer: Consumed data: 1539239952;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 116.92 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 116.13 s
+all wait_time2: 0.24 s
+all wait_time3: 0.06 s
+all time: 116.54 s
+ skiConsumer: Buffer is empty. Waiting...
+Producer: Produced data: 1681879056;offset:741408;size:666927104
+Consumer: Consumed data: 1681879056;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:667668512;size:809566208
+Consumer: Consumed data: -1413550064;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:1477234720;size:809566208
+Consumer: Consumed data: 2071846928;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:2286800928;size:809566208
+Consumer: Consumed data: 1539239952;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:3096367136;size:809566208
+Consumer: Consumed data: -1413550064;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:3905933344;size:809566208
+Consumer: Consumed data: 1539239952;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:4715499552;size:809566208
+Consumer: Consumed data: 2071846928;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:5525065760;size:809566208
+Consumer: Consumed data: 1539239952;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:6334631968;size:809566208
+Consumer: Consumed data: -1413550064;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:7144198176;size:809566208
+Consumer: Consumed data: 2071846928;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7953764384;size:809566208
+Consumer: Consumed data: 1539239952;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:8763330592;size:809566208
+Consumer: Consumed data: -1413550064;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:9572896800;size:809566208
+Consumer: Consumed data: 2071846928;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:10382463008;size:809566208
+Consumer: Consumed data: 1539239952;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:11192029216;size:809566208
+Consumer: Consumed data: -1413550064;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:12001595424;size:809566208
+Consumer: Consumed data: 2071846928;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 117.00 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 115.21 s
+all wait_time2: 0.55 s
+all wait_time3: 0.03 s
+all time: 116.14 s
+,Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1681879056;offset:741408;size:666927104
+Consumer: Consumed data: 1681879056;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:667668512;size:809566208
+Consumer: Consumed data: -1413550064;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:1477234720;size:809566208
+Consumer: Consumed data: 2071846928;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:2286800928;size:809566208
+Consumer: Consumed data: 1539239952;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:3096367136;size:809566208
+Consumer: Consumed data: -1413550064;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:3905933344;size:809566208
+Consumer: Consumed data: 2071846928;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:4715499552;size:809566208
+Consumer: Consumed data: 1539239952;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:5525065760;size:809566208
+Consumer: Consumed data: -1413550064;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:6334631968;size:809566208
+Consumer: Consumed data: 2071846928;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7144198176;size:809566208
+Consumer: Consumed data: 1539239952;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:7953764384;size:809566208
+Consumer: Consumed data: -1413550064;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:8763330592;size:809566208
+Consumer: Consumed data: 2071846928;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:9572896800;size:809566208
+Consumer: Consumed data: 1539239952;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:10382463008;size:809566208
+Consumer: Consumed data: -1413550064;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:11192029216;size:809566208
+Consumer: Consumed data: 2071846928;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:12001595424;size:809566208
+Consumer: Consumed data: 1539239952;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 123.75 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 122.72 s
+all wait_time2: 0.48 s
+all wait_time3: 0.10 s
+all time: 123.54 s
+ climConsumer: Buffer is empty. Waiting...
+Producer: Produced data: -1270910960;offset:741408;size:666927104
+Consumer: Consumed data: -1270910960;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:667668512;size:809566208
+Consumer: Consumed data: 1539239952;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -2080481264;offset:1477234720;size:809566208
+Consumer: Consumed data: -2080481264;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1404915728;offset:2286800928;size:809566208
+Consumer: Consumed data: 1404915728;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:3096367136;size:809566208
+Consumer: Consumed data: 1539239952;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:3905933344;size:809566208
+Consumer: Consumed data: -1413550064;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:4715499552;size:809566208
+Consumer: Consumed data: 2071846928;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:5525065760;size:809566208
+Consumer: Consumed data: 1539239952;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:6334631968;size:809566208
+Consumer: Consumed data: -1413550064;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:7144198176;size:809566208
+Consumer: Consumed data: 2071846928;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7953764384;size:809566208
+Consumer: Consumed data: 1539239952;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:8763330592;size:809566208
+Consumer: Consumed data: -1413550064;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:9572896800;size:809566208
+Consumer: Consumed data: 2071846928;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:10382463008;size:809566208
+Consumer: Consumed data: 1539239952;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:11192029216;size:809566208
+Consumer: Consumed data: -1413550064;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:12001595424;size:809566208
+Consumer: Consumed data: 1539239952;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 117.74 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 116.28 s
+all wait_time2: 0.56 s
+all wait_time3: 0.03 s
+all time: 117.19 s
+bConsumer: Buffer is empty. Waiting...
+Producer: Produced data: -1270910960;offset:741408;size:666927104
+Consumer: Consumed data: -1270910960;offset:741408;size:666927104
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:667668512;size:809566208
+Consumer: Consumed data: 1539239952;offset:667668512;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -2080481264;offset:1477234720;size:809566208
+Consumer: Consumed data: -2080481264;offset:1477234720;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1404915728;offset:2286800928;size:809566208
+Consumer: Consumed data: 1404915728;offset:2286800928;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:3096367136;size:809566208
+Consumer: Consumed data: 1539239952;offset:3096367136;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:3905933344;size:809566208
+Consumer: Consumed data: -1413550064;offset:3905933344;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:4715499552;size:809566208
+Consumer: Consumed data: 2071846928;offset:4715499552;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:5525065760;size:809566208
+Consumer: Consumed data: 1539239952;offset:5525065760;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:6334631968;size:809566208
+Consumer: Consumed data: -1413550064;offset:6334631968;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:7144198176;size:809566208
+Consumer: Consumed data: 2071846928;offset:7144198176;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:7953764384;size:809566208
+Consumer: Consumed data: 1539239952;offset:7953764384;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:8763330592;size:809566208
+Consumer: Consumed data: -1413550064;offset:8763330592;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 2071846928;offset:9572896800;size:809566208
+Consumer: Consumed data: 2071846928;offset:9572896800;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:10382463008;size:809566208
+Consumer: Consumed data: 1539239952;offset:10382463008;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: -1413550064;offset:11192029216;size:809566208
+Consumer: Consumed data: -1413550064;offset:11192029216;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1539239952;offset:12001595424;size:809566208
+Consumer: Consumed data: 1539239952;offset:12001595424;size:809566208
+Consumer: Buffer is empty. Waiting...
+Producer: Produced data: 1413427216 ;size : 666943488
+all load_time1: 107.65 s
+Consumer: Consumed data: 1413427216;offset:12811161632;size:666943488
+all wait_time1: 105.36 s
+all wait_time2: 0.52 s
+all wait_time3: 0.03 s
+all time: 106.22 s
+,

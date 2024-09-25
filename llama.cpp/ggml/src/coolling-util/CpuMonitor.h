@@ -10,6 +10,7 @@
 #include <time.h>
 #include <sched.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #define BUFFER_SIZE 128
 #define THRESHOLD 50.0
 // 定义 CPU 核心结构体
@@ -47,3 +48,17 @@ int bind_thread_to_core(int core_id, Core *cores);
 void update_last_assigned_time(Core *cores,int core_id) ;
 int find_core_assigned(Core *cores, int core_count);
 #endif // CPUMONITOR_H
+
+typedef struct {
+    int thread_id;
+    off_t offset;
+    size_t size;
+    void *buffer;
+} thread_args; //用于读取数据的线程
+// 链表节点
+typedef struct Node {
+    void* data;
+    off_t offset;
+    size_t size;
+    struct Node *next;
+} Node;

@@ -8,7 +8,7 @@
 #include <time.h>
 #include <sched.h>
 #define BUFFER_SIZE 128
-#define THRESHOLD 93.0
+#define THRESHOLD 99.0
 
 int getAllCores(){
     return  sysconf(_SC_NPROCESSORS_ONLN);
