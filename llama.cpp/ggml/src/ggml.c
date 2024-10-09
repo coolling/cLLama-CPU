@@ -18992,7 +18992,7 @@ pthread_cond_t read_over = PTHREAD_COND_INITIALIZER;    // 读取完的条件变
 int over_count=0; //判断是否读取完 当over_count==NUM_THREADS 读取完了 和条件变量一起使用
 
 int NUM_THREADS=8;//读取的线程数
-size_t q_max=2; //消费队列大小
+size_t q_max=1; //消费队列大小
 int count = 0;  // 缓冲区当前数据项的数量
 
 struct ggml_cgraph * global_cgraph=NULL;//计算图
@@ -19286,10 +19286,10 @@ void *producer_func(void *arg) {
                 data=new_node->data;
                 // printf("cool reuse %d \n",new_node->size);
             }
-            pthread_mutex_unlock(&mutex);
+            
             
         }
-        
+        pthread_mutex_unlock(&mutex);
         
         size_t per_thread_size = load_size / NUM_THREADS;
         size_t remaining_data = load_size % NUM_THREADS;
@@ -19470,6 +19470,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
        
         ggml_barrier(state->shared);
         if (state->ith == 0) { // 
+        // printf("eat over\n");
             size_t t_main_end = ggml_time_us();
                         // printf("speed: %.2f s\n",(t_main_end - t_main_start2) / 1000000.0f);
                         wait_time2+=(t_main_end - t_main_start2) ;
@@ -19588,6 +19589,7 @@ void* monitor(void* arg) {
 }
 
 enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
+    printf("start\n");
     wait_time1=0;
     wait_time2=0;
     wait_time3=0;
@@ -19605,7 +19607,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         nowThreadCount = getIdleCoresCount(cores,allCores);//设置第一次推理的核心数
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
         nowThreadCount=2;
-        // printf("init\n");
+        
         // print_cores_and_shared_groups();
         //coolling-todo：改成从上层传下来的文件名
         const char *filename ="/mnt/pmem/lmsys/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf";
