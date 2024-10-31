@@ -3673,7 +3673,7 @@ static struct ggml_tensor * ggml_new_tensor_impl(
         struct ggml_context * ctx,
         enum   ggml_type      type,
         int                   n_dims,
-        const int64_t       * ne,
+        const int64_t       * src_ne,
         struct ggml_tensor  * view_src,
         size_t                view_offs) {
 
@@ -3685,9 +3685,9 @@ static struct ggml_tensor * ggml_new_tensor_impl(
         view_src   = view_src->view_src;
     }
 
-    size_t data_size = ggml_row_size(type, ne[0]);
+    size_t data_size = ggml_row_size(type, src_ne[0]);
     for (int i = 1; i < n_dims; i++) {
-        data_size *= ne[i];
+        data_size *= src_ne[i];
     }
 
     GGML_ASSERT(view_src == NULL || data_size == 0 || data_size + view_offs <= ggml_nbytes(view_src));
@@ -3757,8 +3757,10 @@ static struct ggml_tensor * ggml_new_tensor_impl(
     //GGML_ASSERT_ALIGNED(result->data);
 
     for (int i = 0; i < n_dims; i++) {
-        result->ne[i] = ne[i];
+        result->ne[i] = src_ne[i];
+        // printf("ne%d:%d\n",i,src_ne[i]);
     }
+    // printf("\n");
 
     result->nb[0] = ggml_type_size(type);
     result->nb[1] = result->nb[0]*(result->ne[0]/ggml_blck_size(type));
@@ -18105,7 +18107,7 @@ static void ggml_build_forward_impl(struct ggml_cgraph * cgraph, struct ggml_ten
 
     const int n_new = cgraph->n_nodes - n0;
     GGML_PRINT_DEBUG("%s: visited %d new nodes\n", __func__, n_new);
-
+    // printf("%s: visited %d new nodes\n", __func__, n_new);
     if (n_new > 0) {
         // the last added node should always be starting point
         GGML_ASSERT(cgraph->nodes[cgraph->n_nodes - 1] == tensor);
@@ -18991,14 +18993,14 @@ pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;  // 互斥锁 用于�
 pthread_cond_t read_over = PTHREAD_COND_INITIALIZER;    // 读取完的条件变量
 int over_count=0; //判断是否读取完 当over_count==NUM_THREADS 读取完了 和条件变量一起使用
 
-int NUM_THREADS=8;//读取的线程数
+int NUM_THREADS=4;//读取的线程数
 size_t q_max=1; //消费队列大小
 int count = 0;  // 缓冲区当前数据项的数量
 
 struct ggml_cgraph * global_cgraph=NULL;//计算图
 
 
-FILE * fouts[8];//打开的文件描述符
+FILE * fouts[4];//打开的文件描述符
 Node *temp=NULL;//当前读取的参数节点
 
 
@@ -19007,9 +19009,9 @@ size_t wait_time1=0;
 size_t wait_time2=0;
 size_t wait_time3=0;
 size_t all_time=0;
-size_t load_time11[8];
-size_t load_time12[8];
-size_t load_time13[8];
+size_t load_time11[4];
+size_t load_time12[4];
+size_t load_time13[4];
 size_t load=0; //记录加载数据时间
 
 
@@ -19203,7 +19205,7 @@ void *producer_func(void *arg) {
                         
                         // 等待直到缓冲区有空间
                         while (count == q_max) {
-                            printf("Producer: Buffer is full. Waiting...\n");
+                            // printf("Producer: Buffer is full. Waiting...\n");
                             pthread_cond_wait(&empty, &mutex);
                         }
                         
@@ -19221,7 +19223,7 @@ void *producer_func(void *arg) {
                         }
                         count++;
                         
-                        printf("Producer: Produced data: %d;offset:%ld;size:%ld\n", data,offsetl,offsetr-offsetl);
+                        // printf("Producer: Produced data: %d;offset:%ld;size:%ld\n", data,offsetl,offsetr-offsetl);
                         
                         // 唤醒等待的消费者线程
                         pthread_cond_signal(&full);
@@ -19314,7 +19316,7 @@ void *producer_func(void *arg) {
         
         // 等待直到缓冲区有空间
         while (count == q_max) {
-            printf("Producer: Buffer is full. Waiting...\n");
+            // printf("Producer: Buffer is full. Waiting...\n");
             pthread_cond_wait(&empty, &mutex);
         }
         
@@ -19332,7 +19334,7 @@ void *producer_func(void *arg) {
         }
         count++;
         
-        printf("Producer: Produced data: %d ;size : %ld\n", data,offsetr-offsetl);
+        // printf("Producer: Produced data: %d ;size : %ld\n", data,offsetr-offsetl);
         
         // 唤醒等待的消费者线程
         pthread_cond_signal(&full);
@@ -19399,7 +19401,9 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                 struct ggml_tensor * src = node->src[i];
                 // const auto * weight = get_weight(ggml_get_name(src0));
                 if(src!=NULL&&src->extra!=0){
+                    
                     off_t offset= (intptr_t)(uintptr_t)src->extra;
+                    
                     size_t size= ggml_nbytes(src); 
                     if(temp!=NULL&&temp->offset<=offset&&offset+size<=temp->offset+temp->size){  
                         src->data=temp->data+offset-temp->offset;//已经加载
@@ -19412,12 +19416,12 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                             t_main_start1 = ggml_time_us();
                         }
                         while (head == NULL) {
-                            printf("Consumer: Buffer is empty. Waiting...\n");
+                            // printf("Consumer: Buffer is empty. Waiting...\n");
                             pthread_cond_wait(&full, &mutex);
                         }
                         if (state->ith == 0) { 
                             size_t t_main_end = ggml_time_us();
-                            printf("wait time: %.2f s\n",(t_main_end - t_main_start1) / 1000000.0f);
+                            // printf("wait time: %.2f s\n",(t_main_end - t_main_start1) / 1000000.0f);
                             wait_time1+=(t_main_end - t_main_start1) ;
                         }
                         
@@ -19439,7 +19443,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                             tail = NULL;
                         }
              
-                        printf("Consumer: Consumed data: %d;offset:%ld;size:%ld\n", temp->data,temp->offset,temp->size);
+                        // printf("Consumer: Consumed data: %d;offset:%ld;size:%ld\n", temp->data,temp->offset,temp->size);
                         count--; //消费队列数量减1
                         
                         // 唤醒等待的生产者线程
@@ -19462,6 +19466,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         if (state->ith == 0) { 
             t_main_start2 = ggml_time_us();
         }
+    
         ggml_compute_forward(&params, node);      //执行计算 
         if (state->ith == 0 && cplan->abort_callback && cplan->abort_callback(cplan->abort_callback_data)) {
             state->shared->ec = GGML_STATUS_ABORTED;
@@ -19606,7 +19611,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         
         nowThreadCount = getIdleCoresCount(cores,allCores);//设置第一次推理的核心数
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
-        nowThreadCount=2;
+        nowThreadCount=3;
         
         // print_cores_and_shared_groups();
         //coolling-todo：改成从上层传下来的文件名
