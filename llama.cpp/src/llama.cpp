@@ -3236,7 +3236,6 @@ static bool llama_kv_cache_init(
             cache.cells[i].src = i;
         }
     }
-
     // count used buffer types
     std::map<ggml_backend_buffer_type_t, int> buft_layer_count;
     if (offload)
@@ -3465,12 +3464,12 @@ static void llama_kv_cache_clear(struct llama_kv_cache &cache)
         ggml_backend_buffer_clear(buf, 0);
     }
 }
-
+//用于从键值缓存（KV cache）中移除与特定序列ID（seq_id）相关的条目
 static bool llama_kv_cache_seq_rm(
     struct llama_kv_cache &cache,
-    llama_seq_id seq_id,
-    llama_pos p0,
-    llama_pos p1)
+    llama_seq_id seq_id,//要移除的序列ID
+    llama_pos p0,//要移除的范围的起始位置
+    llama_pos p1)//要移除的范围的结束位置
 {
     uint32_t new_head = cache.size;
 
@@ -3540,13 +3539,13 @@ static bool llama_kv_cache_seq_rm(
 
     return true;
 }
-
+//用于在键值缓存（KV cache）中复制与特定序列ID（seq_id_src）相关的条目到另一个序列ID（seq_id_dst）
 static void llama_kv_cache_seq_cp(
     struct llama_kv_cache &cache,
-    llama_seq_id seq_id_src,
-    llama_seq_id seq_id_dst,
-    llama_pos p0,
-    llama_pos p1)
+    llama_seq_id seq_id_src,//源序列ID
+    llama_seq_id seq_id_dst,//目标序列ID
+    llama_pos p0,//要复制的范围的起始位置
+    llama_pos p1)//要复制的范围的结束位置
 {
     if (p0 < 0)
         p0 = 0;
@@ -3591,7 +3590,7 @@ static void llama_kv_cache_seq_cp(
         }
     }
 }
-
+//在键值缓存（KV cache）中保留与特定序列ID（seq_id）相关的条目，同时清除所有其他条目。
 static void llama_kv_cache_seq_keep(struct llama_kv_cache &cache, llama_seq_id seq_id)
 {
     uint32_t new_head = cache.size;
@@ -3619,12 +3618,13 @@ static void llama_kv_cache_seq_keep(struct llama_kv_cache &cache, llama_seq_id s
         cache.head = new_head;
 }
 
+//用于在键值缓存（KV cache）中更新与特定序列ID（seq_id）相关的条目的位置
 static void llama_kv_cache_seq_add(
     struct llama_kv_cache &cache,
     llama_seq_id seq_id,
     llama_pos p0,
     llama_pos p1,
-    llama_pos delta)
+    llama_pos delta)//位置变化量
 {
     uint32_t new_head = cache.size;
 
@@ -3657,7 +3657,7 @@ static void llama_kv_cache_seq_add(
             cache.has_shift = true;
             cache.cells[i].pos += delta;
             cache.cells[i].delta += delta;
-
+            //如果更新后的位置小于0，则将该单元标记为未使用，并减少已使用的单元计数。
             if (cache.cells[i].pos < 0)
             {
                 if (!cache.cells[i].is_empty())
@@ -3679,6 +3679,7 @@ static void llama_kv_cache_seq_add(
     cache.head = new_head != cache.size ? new_head : 0;
 }
 
+//用于在键值缓存（KV cache）中更新与特定序列ID（seq_id）相关的条目的位置，通过将位置除以一个给定的整数d
 static void llama_kv_cache_seq_div(
     struct llama_kv_cache &cache,
     llama_seq_id seq_id,
@@ -3717,12 +3718,12 @@ static void llama_kv_cache_seq_div(
             {
                 llama_pos p_old = cache.cells[i].pos;
                 cache.cells[i].pos /= d;
-                cache.cells[i].delta += cache.cells[i].pos - p_old;
+                cache.cells[i].delta += cache.cells[i].pos - p_old;//用于在键值缓存（KV cache）中更新与特定序列ID（seq_id）相关的条目的位置，通过将位置除以一个给定的整数d
             }
         }
     }
 }
-
+//查找键值缓存（KV cache）中给定序列ID（seq_id）的最大位置值（pos）
 static llama_pos llama_kv_cache_seq_pos_max(struct llama_kv_cache &cache, llama_seq_id seq_id)
 {
     llama_pos result = 0;
@@ -3737,16 +3738,16 @@ static llama_pos llama_kv_cache_seq_pos_max(struct llama_kv_cache &cache, llama_
 
     return result;
 }
-
+//标记键值缓存（KV cache）需要进行碎片整理（defragmentation）
 static void llama_kv_cache_defrag(struct llama_kv_cache &cache)
 {
     cache.do_defrag = true;
 }
-
+//根据配置参数确定键值缓存（KV cache）所需的填充大小（padding）
 static uint32_t llama_kv_cache_get_padding(const struct llama_cparams &cparams)
 {
     // the FA kernels require padding to avoid extra runtime boundary checks
-    return cparams.flash_attn ? 256u : 32u;
+    return cparams.flash_attn ? 256u : 32u;//256u和32u是无符号整数字面量，表示不同的填充大小要求
 }
 
 //
@@ -9348,6 +9349,7 @@ static struct ggml_tensor *llm_build_inp_embd(
     return inpL;
 }
 
+//往kv cache存数据
 static void llm_build_kv_store(
     struct ggml_context *ctx,
     const llama_hparams &hparams,
@@ -17066,7 +17068,7 @@ static int llama_encode_internal(
 
     return 0;
 }
-
+//用于对键值缓存（KV cache）进行碎片整理（defragmentation）。碎片整理的目的是将缓存中的数据从末尾移动到开头的空洞中，以保持缓存的连续性和效率。
 // find holes from the beginning of the KV cache and fill them by moving data from the end of the cache
 static void llama_kv_cache_defrag_internal(struct llama_context &lctx)
 {
@@ -17226,7 +17228,7 @@ static void llama_kv_cache_defrag_internal(struct llama_context &lctx)
     //
     // likely not worth the effort, as we have ggml_graph based defrag
     //
-
+    //描述了在一个键值缓存（KV cache）中如何批量移动键（keys）和值（values）以进行碎片整理（defragmentation）
     const uint32_t n_embd_k_gqa = hparams.n_embd_k_gqa();
     const uint32_t n_embd_v_gqa = hparams.n_embd_v_gqa();
 
@@ -17301,7 +17303,7 @@ static void llama_kv_cache_defrag_internal(struct llama_context &lctx)
 
     // LLAMA_LOG_INFO("(tmp log) KV defrag time: %.3f ms\n", (t_end - t_start)/1000.0);
 }
-
+//用于更新LLaMA模型的键值缓存（KV cache）
 static void llama_kv_cache_update_internal(struct llama_context &lctx)
 {
     bool need_reserve = false;
@@ -19855,7 +19857,7 @@ int32_t llama_control_vector_apply(struct llama_context *lctx, const float *data
 
     return 0;
 }
-
+//创建并初始化一个键值缓存视图（KV cache view）
 struct llama_kv_cache_view llama_kv_cache_view_init(const struct llama_context *ctx, int32_t n_seq_max)
 {
     struct llama_kv_cache_view result = {
@@ -19884,9 +19886,10 @@ void llama_kv_cache_view_free(struct llama_kv_cache_view *view)
         view->cells_sequences = nullptr;
     }
 }
-
+//更新键值缓存视图（KV cache view）以反映当前键值缓存的状态
 void llama_kv_cache_view_update(const struct llama_context *ctx, struct llama_kv_cache_view *view)
 {
+    //如果视图的n_cells小于上下文ctx中的缓存大小，或者cells指针为nullptr，则重新分配cells和cells_sequences数组的内存。
     if (uint32_t(view->n_cells) < ctx->kv_self.size || view->cells == nullptr)
     {
         view->n_cells = int32_t(ctx->kv_self.size);
@@ -22327,10 +22330,10 @@ void kv_delete(struct llama_context *ctx)
         printf("kv used: %d\n", ctx->kv_self.used);
         // printf("\nkq0_copy\n");
         // print_ggml_tensor_info(kq0_copy);
-        printf("\nctx->kv_self.score_l[0]\n");
-        print_ggml_tensor_info(ctx->kv_self.score_l[0]);
-        printf("\nctx->kv_self.score_l[1]\n");
-        print_ggml_tensor_info(ctx->kv_self.score_l[1]);
+        // printf("\nctx->kv_self.score_l[0]\n");
+        // print_ggml_tensor_info(ctx->kv_self.score_l[0]);
+        // printf("\nctx->kv_self.score_l[1]\n");
+        // print_ggml_tensor_info(ctx->kv_self.score_l[1]);
         sleep(1);
     }
 }

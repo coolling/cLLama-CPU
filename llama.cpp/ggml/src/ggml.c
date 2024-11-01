@@ -19017,6 +19017,7 @@ size_t load=0; //记录加载数据时间
 
 // cool：多线程读取数据
 void *read_data(void *args) {
+
     thread_args *data = (thread_args *)args;
     // 定位到文件的指定位置
     load_time12[data->thread_id]=ggml_time_us();
@@ -19117,7 +19118,7 @@ void *producer_func(void *arg) {
                     }else{
                         //当前层统计完了，可以加载数据
                         layer_count++;//目前累计了一层
-                        if(layer_count<1){ //1可以修改为你想累计的层数，这里指累计一层就读取
+                        if(layer_count<2){ //1可以修改为你想累计的层数，这里指累计一层就读取
                             if(strcmp(last_name, "") == 0){
                                 offsetl=offset;
                                 offsetr=offset+size;
@@ -19607,11 +19608,11 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         init_shared_groups(allCores, &shared_groups_level2, &count2,&shared_groups_level3,&count3);//获取系统共享2级3级cache的核心组
         init_cores(&cores,allCores,&shared_groups_level2,count2,&shared_groups_level3,count3);//记录每个核心共享2级3级cache的共享组
         pThreadPool = ThreadPoolConstruct(allCores*2+2, allCores*2+2);//创建线程池
-        // pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);//监控线程，查看空闲核心
+        pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);//监控线程，查看空闲核心
         
         nowThreadCount = getIdleCoresCount(cores,allCores);//设置第一次推理的核心数
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
-        nowThreadCount=3;
+        // nowThreadCount=3;
         
         // print_cores_and_shared_groups();
         //coolling-todo：改成从上层传下来的文件名
