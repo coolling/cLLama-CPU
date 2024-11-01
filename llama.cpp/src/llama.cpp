@@ -9989,8 +9989,8 @@ static struct ggml_tensor *llm_build_kqv(
             // print_ggml_tensor_info(con);
             // printf("\n\n%d\n", il);
             // struct ggml_tensor * t=ggml_add(ctx, kv.score_l[il], ggml_concat(ctx,kq,con,0));
-            struct ggml_tensor * t=ggml_add(ctx, kv.score_l[il], pad);
-            ggml_build_forward_expand(graph, ggml_cpy(ctx, t, kv.score_l[il]));
+            ggml_add_inplace(ctx, kv.score_l[il], pad);
+            ggml_build_forward_expand(graph, kv.score_l[il]);
         }
         else
         {
