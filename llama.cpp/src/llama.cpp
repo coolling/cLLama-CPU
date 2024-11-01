@@ -2915,10 +2915,21 @@ struct llama_context
     llama_context(const llama_model &model)
         : model(model), sampling(llama_n_vocab(&model)), t_start_us(model.t_start_us), t_load_us(model.t_load_us)
     {
+        
+        // 初始化互斥锁
+        pthread_mutex_init(&kvDeleteCounter.lock, NULL);
+
+        // 初始化条件变量
+        pthread_cond_init(&kvDeleteCounter.cond, NULL);
+
+        // 初始化计数器的值
+        kvDeleteCounter.count = 0;
     }
 
     ~llama_context()
     {
+        pthread_mutex_destroy(&kvDeleteCounter.lock);
+        pthread_cond_destroy(&kvDeleteCounter.cond);
         ggml_backend_sched_free(sched);
 
         for (ggml_backend_t backend : backends)
@@ -2930,7 +2941,7 @@ struct llama_context
     }
 
     const struct llama_model &model;
-
+    Counter kvDeleteCounter;
     struct llama_cparams cparams;
     struct llama_sampling sampling;
     struct llama_kv_cache kv_self;
@@ -3013,7 +3024,10 @@ struct llama_context
     struct ggml_tensor *inp_embd_enc;      // F32 [n_embd, n_outputs_enc]
     struct ggml_tensor *inp_KQ_mask_cross; // F32 [n_outputs_enc, n_batch]
 };
+Counter* getCounter(struct llama_context *ctx){
+    return &(ctx->kvDeleteCounter);
 
+}
 struct llama_lora_weight
 {
     struct ggml_tensor *a = nullptr;
@@ -22324,16 +22338,21 @@ void kv_delete(struct llama_context *ctx)
 {
     while (1)
     {
-        // 系统是否空闲
-        //   struct ggml_tensor * t=ggml_get_tensor(ctx,"kq_soft_max_ext_1");
-        // 累积注意力分数最小的token
+        pthread_mutex_lock(&(ctx->kvDeleteCounter.lock));
+        while (!ctx->kvDeleteCounter.count) {
+            pthread_cond_wait(&ctx->kvDeleteCounter.cond, &ctx->kvDeleteCounter.lock);
+        }
         printf("kv used: %d\n", ctx->kv_self.used);
-        // printf("\nkq0_copy\n");
-        // print_ggml_tensor_info(kq0_copy);
-        // printf("\nctx->kv_self.score_l[0]\n");
-        // print_ggml_tensor_info(ctx->kv_self.score_l[0]);
-        // printf("\nctx->kv_self.score_l[1]\n");
-        // print_ggml_tensor_info(ctx->kv_self.score_l[1]);
+        pthread_mutex_unlock(&(ctx->kvDeleteCounter.lock));
         sleep(1);
+// 系统是否空闲
+//   struct ggml_tensor * t=ggml_get_tensor(ctx,"kq_soft_max_ext_1");
+// 累积注意力分数最小的token
+// printf("\nkq0_copy\n");
+// print_ggml_tensor_info(kq0_copy);
+// printf("\nctx->kv_self.score_l[0]\n");
+// print_ggml_tensor_info(ctx->kv_self.score_l[0]);
+// printf("\nctx->kv_self.score_l[1]\n");
+// print_ggml_tensor_info(ctx->kv_self.score_l[1]);
     }
 }

@@ -52,10 +52,15 @@ extern "C" {
     //
     // TODO: show sample usage
     //
-
+    #include <pthread.h>
+    typedef struct {
+        pthread_mutex_t lock;
+        pthread_cond_t cond;
+        int count;
+    } Counter;
     struct llama_model;
     struct llama_context;
-
+    Counter* getCounter(struct llama_context *ctx);
     typedef int32_t llama_pos;
     typedef int32_t llama_token;
     typedef int32_t llama_seq_id;

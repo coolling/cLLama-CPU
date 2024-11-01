@@ -864,7 +864,12 @@ int main(int argc, char ** argv) {
             }
 
             if (n_past > 0 && is_interacting) {
+                Counter* kvDeleteCounter = getCounter(ctx);
                 LOG("waiting for user input\n");
+                pthread_mutex_lock(&(kvDeleteCounter->lock));
+                kvDeleteCounter->count=1;
+                pthread_cond_broadcast(&kvDeleteCounter->cond);
+                pthread_mutex_unlock(&(kvDeleteCounter->lock));
 
                 if (params.conversation) {
                     printf("\n> ");
@@ -891,7 +896,9 @@ int main(int argc, char ** argv) {
                     another_line = console::readline(line, params.multiline_input);
                     buffer += line;
                 } while (another_line);
-
+                pthread_mutex_lock(&(kvDeleteCounter->lock));
+                kvDeleteCounter->count=0;
+                pthread_mutex_unlock(&(kvDeleteCounter->lock));
                 // done taking input, reset color
                 console::set_display(console::reset);
                 display = true;
