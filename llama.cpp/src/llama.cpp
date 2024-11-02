@@ -16771,6 +16771,8 @@ static int llama_decode_internal(
 
             if (!llama_kv_cache_find_slot(kv_self, u_batch))
             {
+                // llama_kv_cache_seq_add(&lctx,0,-1,-1,-1);
+                // llama_kv_cache_update(&lctx);
                 return 1;
             }
 
@@ -16920,7 +16922,7 @@ static int llama_decode_internal(
     // decide if we need to defrag the kv cache
     if (cparams.causal_attn && cparams.defrag_thold >= 0.0f)
     {
-        const float fragmentation = kv_self.n >= 128 ? 1.0f - float(kv_self.used) / float(kv_self.n) : 0.0f;
+        const float fragmentation = kv_self.n >= 32 ? 1.0f - float(kv_self.used) / float(kv_self.n) : 0.0f;
 
         // queue defragmentation for next llama_kv_cache_update
         if (fragmentation > cparams.defrag_thold)

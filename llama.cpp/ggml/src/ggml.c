@@ -18993,7 +18993,8 @@ pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;  // 互斥锁 用于�
 pthread_cond_t read_over = PTHREAD_COND_INITIALIZER;    // 读取完的条件变量
 int over_count=0; //判断是否读取完 当over_count==NUM_THREADS 读取完了 和条件变量一起使用
 
-int NUM_THREADS=4;//读取的线程数
+
+#define NUM_THREADS 4//读取的线程数
 size_t q_max=1; //消费队列大小
 int count = 0;  // 缓冲区当前数据项的数量
 
@@ -19016,29 +19017,39 @@ size_t load=0; //记录加载数据时间
 
 
 // cool：多线程读取数据
-void *read_data(void *args) {
+// void *read_data(void *args) {
 
+//     thread_args *data = (thread_args *)args;
+//     // 定位到文件的指定位置
+//     load_time12[data->thread_id]=ggml_time_us();
+
+//     fseek(fouts[data->thread_id], data->offset, SEEK_SET);
+//     fread(data->buffer, 1, data->size, fouts[data->thread_id]);
+//     // memcpy(data->buffer, mapped+ data->offset, data->size);
+//     load_time13[data->thread_id]=ggml_time_us();
+//     load_time11[data->thread_id]+=load_time13[data->thread_id]-load_time12[data->thread_id];
+
+//     pthread_mutex_lock(&thread_mutex);
+//     over_count++;
+//     if(over_count==NUM_THREADS){
+//         pthread_cond_signal(&read_over);
+
+//     }
+//     pthread_mutex_unlock(&thread_mutex);
+   
+//     return NULL;
+// }
+void read_data(void *args) {
     thread_args *data = (thread_args *)args;
     // 定位到文件的指定位置
-    load_time12[data->thread_id]=ggml_time_us();
+    load_time12[data->thread_id] = ggml_time_us();
 
     fseek(fouts[data->thread_id], data->offset, SEEK_SET);
     fread(data->buffer, 1, data->size, fouts[data->thread_id]);
-    // memcpy(data->buffer, mapped+ data->offset, data->size);
-    load_time13[data->thread_id]=ggml_time_us();
-    load_time11[data->thread_id]+=load_time13[data->thread_id]-load_time12[data->thread_id];
-
-    pthread_mutex_lock(&thread_mutex);
-    over_count++;
-    if(over_count==NUM_THREADS){
-        pthread_cond_signal(&read_over);
-
-    }
-    pthread_mutex_unlock(&thread_mutex);
-   
-    return NULL;
+    // memcpy(data->buffer, mapped + data->offset, data->size);
+    load_time13[data->thread_id] = ggml_time_us();
+    load_time11[data->thread_id] += load_time13[data->thread_id] - load_time12[data->thread_id];
 }
-
 #include <stdio.h>
 #include <string.h>
 
@@ -19118,7 +19129,7 @@ void *producer_func(void *arg) {
                     }else{
                         //当前层统计完了，可以加载数据
                         layer_count++;//目前累计了一层
-                        if(layer_count<2){ //1可以修改为你想累计的层数，这里指累计一层就读取
+                        if(layer_count<1){ //1可以修改为你想累计的层数，这里指累计一层就读取
                             if(strcmp(last_name, "") == 0){
                                 offsetl=offset;
                                 offsetr=offset+size;
@@ -19181,20 +19192,34 @@ void *producer_func(void *arg) {
                         size_t per_thread_size = load_size / NUM_THREADS;
                         size_t remaining_data = load_size % NUM_THREADS;
                         
-                        for (int i = 0; i < NUM_THREADS; ++i) {
-                            args[i].thread_id=i;
-                            args[i].offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
-                            args[i].size = per_thread_size + (i < remaining_data ? 1 : 0);
-                            args[i].buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+                        // for (int i = 0; i < NUM_THREADS; ++i) {
+                        //     args[i].thread_id=i;
+                        //     args[i].offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+                        //     args[i].size = per_thread_size + (i < remaining_data ? 1 : 0);
+                        //     args[i].buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
         
-                            pThreadPool->AddWorkUnlimit(pThreadPool, read_data, &args[i]);
-                        }
-                        pthread_mutex_lock(&thread_mutex);
-                        while(over_count!=NUM_THREADS){
-                            pthread_cond_wait(&read_over, &thread_mutex);
+                        //     pThreadPool->AddWorkUnlimit(pThreadPool, read_data, &args[i]);
+                        // }
+                        // pthread_mutex_lock(&thread_mutex);
+                        // while(over_count!=NUM_THREADS){
+                        //     pthread_cond_wait(&read_over, &thread_mutex);
 
+                        // }
+                        #pragma omp parallel for num_threads(NUM_THREADS) default(none) shared(data, offsetl, per_thread_size, remaining_data, fouts)
+                        for (int i = 0; i < NUM_THREADS; ++i) {
+                            thread_args args;
+                            args.thread_id = i; // 使用循环变量i作为thread_id
+                            args.offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+                            args.size = per_thread_size + (i < remaining_data ? 1 : 0);
+                            args.buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+
+                            read_data(&args);
                         }
-                        over_count=0;//将变量重新设置为0
+
+                        // 在所有线程执行完毕后进行同步
+                        // #pragma omp barrier
+
+                        // over_count=0;//将变量重新设置为0
                         size_t load2=ggml_time_us();
 
                         //插入数据
@@ -19296,19 +19321,32 @@ void *producer_func(void *arg) {
         
         size_t per_thread_size = load_size / NUM_THREADS;
         size_t remaining_data = load_size % NUM_THREADS;
+        // for (int i = 0; i < NUM_THREADS; ++i) {
+        //     args[i].thread_id=i;
+        //     args[i].offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+        //     args[i].size = per_thread_size + (i < remaining_data ? 1 : 0);
+        //     args[i].buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+        //     pThreadPool->AddWorkUnlimit(pThreadPool, read_data, &args[i]);
+        // }
+        // pthread_mutex_lock(&thread_mutex);
+        // while(over_count!=NUM_THREADS){
+        //     // printf("overcount:%d\n",over_count);
+        //     pthread_cond_wait(&read_over, &thread_mutex);
+        // }
+        #pragma omp parallel for num_threads(NUM_THREADS) default(none) shared(data, offsetl, per_thread_size, remaining_data, fouts)
         for (int i = 0; i < NUM_THREADS; ++i) {
-            args[i].thread_id=i;
-            args[i].offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
-            args[i].size = per_thread_size + (i < remaining_data ? 1 : 0);
-            args[i].buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
-            pThreadPool->AddWorkUnlimit(pThreadPool, read_data, &args[i]);
+            thread_args args;
+            args.thread_id = i; // 使用循环变量i作为thread_id
+            args.offset = offsetl + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+            args.size = per_thread_size + (i < remaining_data ? 1 : 0);
+            args.buffer = data + i * per_thread_size + (i < remaining_data ? i : remaining_data);
+
+            read_data(&args);
         }
-        pthread_mutex_lock(&thread_mutex);
-        while(over_count!=NUM_THREADS){
-            // printf("overcount:%d\n",over_count);
-            pthread_cond_wait(&read_over, &thread_mutex);
-        }
-        over_count=0;
+
+        // 在所有线程执行完毕后进行同步
+        #pragma omp barrier
+        // over_count=0;
         size_t load2=ggml_time_us();
         pthread_mutex_unlock(&thread_mutex);
         strcpy(last_name, "");
