@@ -9784,6 +9784,7 @@ bool compare_ne_arrays(const struct ggml_tensor *tensor1, const struct ggml_tens
     }
     return true;
 }
+#include <cmath>
 #include <iostream>
 #include <iomanip>
 
@@ -9828,7 +9829,7 @@ void print_ggml_tensor_info(const struct ggml_tensor *tensor)
     std::cout << "Extra Data: " << tensor->extra << std::endl;
 
     // 打印data中的数据
-    if (tensor->data != NULL && tensor->type == GGML_TYPE_F32)
+    if (tensor->data != NULL )
     {
         std::cout << "Data (fp32):" << std::endl;
         const float *data = reinterpret_cast<const float *>(tensor->data);
@@ -9840,8 +9841,18 @@ void print_ggml_tensor_info(const struct ggml_tensor *tensor)
 
         for (size_t i = 0; i < total_elements; ++i)
         {
-            std::cout << std::fixed << std::setprecision(3) << data[i] << " ";
+            float float_value;
+            float_value =data[i];
+         
+            if (std::fabs(float_value) < 1e-6) {
+                float_value = 0.0;
+            }
+            std::cout << std::fixed << std::setprecision(3) << float_value << " ";
             if ((i + 1) % tensor->ne[0] == 0)
+            {
+                std::cout << std::endl;
+            }
+            if ((i + 1) % (32*128) == 0&&tensor->type==1)
             {
                 std::cout << std::endl;
             }
@@ -9972,43 +9983,21 @@ static struct ggml_tensor *llm_build_kqv(
         if(il==0){
             // kq0_copy=kq;
             kq0_copy = ggml_dup_tensor(ctx,kq);
-            // ggml_build_forward_expand(graph, ggml_cpy(ctx,kq,kq0_copy));
         }
-        
-
         // ggml_build_forward_expand(graph, kq0_copy);
         // coolling:score store
-
         if (compare_ne_arrays(kv.score_l[il], kq))
         {
             // printf("add!!%d\n", il);
             struct ggml_tensor * pad=ggml_pad(ctx,kq,kv.score_l[il]->ne[0]-kq->ne[0],0,0,0);
-            // struct ggml_tensor * con = ggml_new_tensor_3d(ctx, GGML_TYPE_F32,  n_ctx-kq->ne[0],1,n_head_kv );
-            // set_tensor_zero(con);
-            // printf("\n\ncon!!%d\n", il);
-            // print_ggml_tensor_info(con);
-            // printf("\n\n%d\n", il);
-            // struct ggml_tensor * t=ggml_add(ctx, kv.score_l[il], ggml_concat(ctx,kq,con,0));
             ggml_add_inplace(ctx, kv.score_l[il], pad);
             ggml_build_forward_expand(graph, kv.score_l[il]);
         }
         else
         {
-            // printf("copy!!%d\n", il);
             set_tensor_zero(kv.score_l[il]);
-            // kv.score_l[il]=ggml_dup_tensor(ctx,kq);
-            // ggml_build_forward_expand(graph, ggml_cpy(ctx,kq,kv.score_l[il]));
-            // kv.score_l[il]=ggml_set_zero(kv.score_l[il]);
-            // ggml_build_forward_expand(graph, kv.score_l[il]);
         }
         cb(kv.score_l[il], " kv_score_l", il);
-        // print_ggml_tensor_info(kq);
-        // print_ggml_tensor_info(kv.score_l[il]);
-        // kv.score_l[il]=ggml_add(ctx, kv.score_l[il], kq);
-        // printf("\n");
-        // print_ggml_tensor_info(kv.score_l[il]);
-        // printf("\n");
-        // print_ggml_tensor_info(kq);
         GGML_ASSERT(kv.size == n_ctx);
 
         // split cached v into n_head heads
@@ -16768,12 +16757,20 @@ static int llama_decode_internal(
             {
                 kv_self.head = 0;
             }
+            // printf("\n\nbefore update:\n");
+            // printf("\n\nbefore update: %d\n",kv_self.used);
+            // print_ggml_tensor_info(kv_self.k_l[0]);
 
             if (!llama_kv_cache_find_slot(kv_self, u_batch))
             {
+                
+                // llama_kv_cache_seq_rm(&lctx,0,0,1);
                 // llama_kv_cache_seq_add(&lctx,0,-1,-1,-1);
                 // llama_kv_cache_update(&lctx);
+                // printf("\n\nafter update: %d\n",kv_self.used);
+                // print_ggml_tensor_info(kv_self.k_l[0]);
                 return 1;
+
             }
 
             if (!kv_self.recurrent)

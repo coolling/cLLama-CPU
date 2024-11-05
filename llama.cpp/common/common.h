@@ -201,7 +201,7 @@ struct gpt_params {
     std::string public_path   = "";
     std::string chat_template = "";
     std::string system_prompt = "";
-    bool enable_chat_template = true;
+    bool enable_chat_template = false;
 
     std::vector<std::string> api_keys;
 
