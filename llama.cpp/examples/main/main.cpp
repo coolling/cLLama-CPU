@@ -119,8 +119,36 @@ static void llama_log_callback_logTee(ggml_log_level level, const char * text, v
     (void) user_data;
     LOG_TEE("%s", text);
 }
+std::string getCurrentTimestamp() {
+    std::time_t now = std::time(nullptr);
+    char timestamp[64];
+    std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+    return std::string(timestamp);
+}
+// #include </usr/local/include/pybind11/pybind11.h>
+// #include </usr/local/include/pybind11/embed.h>
+// #include </usr/local/include/pybind11/stl.h>
+// namespace py = pybind11;
 
+// 日志函数，接受日志消息和日志级别
+void logMessage(const std::string& message, const std::string& level = "INFO") {
+    // 打开或创建日志文件
+    std::ofstream logFile("application.log", std::ios::out | std::ios::app);
+    // 检查文件是否成功打开
+    if (!logFile.is_open()) {
+        std::cerr << "Failed to open log file." << std::endl;
+        return;
+    }
+
+    // 写入日志消息，包括时间戳和日志级别
+    std::string timestamp = getCurrentTimestamp(); // 这里可以替换为实际的时间戳
+    logFile << timestamp << " " << level << " - " << message << std::endl;
+
+    // 关闭文件
+    logFile.close();
+}
 static std::string chat_add_and_format(struct llama_model * model, std::vector<llama_chat_msg> & chat_msgs, std::string role, std::string content) {
+    logMessage(content,role);
     llama_chat_msg new_msg{role, content};
     auto formatted = llama_chat_format_single(
         model, g_params->chat_template, chat_msgs, new_msg, role == "user");
@@ -287,6 +315,7 @@ int main(int argc, char ** argv) {
             LOG("use session tokens\n");
             embd_inp = session_tokens;
         }
+      
 
         LOG("prompt: \"%s\"\n", log_tostr(prompt));
         LOG("tokens: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, embd_inp).c_str());
@@ -852,6 +881,7 @@ int main(int argc, char ** argv) {
                     if (params.enable_chat_template) {
                         chat_add_and_format(model, chat_msgs, "assistant", assistant_ss.str());
                     }
+                    
                     is_interacting = true;
                     printf("\n");
                 }
@@ -924,6 +954,7 @@ int main(int argc, char ** argv) {
                     std::string user_inp = format_chat
                         ? chat_add_and_format(model, chat_msgs, "user", std::move(buffer))
                         : std::move(buffer);
+                    
                     // TODO: one inconvenient of current chat template implementation is that we can't distinguish between user input and special tokens (prefix/postfix)
                     const auto line_pfx = ::llama_tokenize(ctx, params.input_prefix, false, true);
                     const auto line_inp = ::llama_tokenize(ctx, user_inp,            false, format_chat);

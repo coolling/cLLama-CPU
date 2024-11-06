@@ -2745,7 +2745,7 @@ struct llama_kv_cache
     ggml_type type_v = GGML_TYPE_F16;
 
     std::vector<llama_kv_cell> cells;
-    std::vector<struct ggml_tensor *> score_l;
+
     std::vector<struct ggml_tensor *> k_l; // per layer
     std::vector<struct ggml_tensor *> v_l;
 
@@ -3286,7 +3286,7 @@ static bool llama_kv_cache_init(
 
     cache.k_l.reserve(n_layer);
     cache.v_l.reserve(n_layer);
-    cache.score_l.reserve(n_layer);
+
 
     for (int i = 0; i < (int)n_layer; i++)
     {
@@ -3301,7 +3301,6 @@ static bool llama_kv_cache_init(
         ggml_format_name(v, "cache_v_l%d", i);
         cache.k_l.push_back(k);
         cache.v_l.push_back(v);
-        cache.score_l.push_back(score);
     }
 
     // allocate tensors and initialize the buffers to avoid NaNs in the padding
@@ -9772,112 +9771,7 @@ static struct ggml_tensor *llm_build_moe_ffn(
 
     return moe_out;
 }
-// 比较两个ggml_tensor的ne数组是否相同
-bool compare_ne_arrays(const struct ggml_tensor *tensor1, const struct ggml_tensor *tensor2)
-{
-    for (int i = 0; i < GGML_MAX_DIMS; ++i)
-    {
-        if (tensor1->ne[i] != tensor2->ne[i] && i != 0)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-#include <cmath>
-#include <iostream>
-#include <iomanip>
 
-// 打印ggml_tensor结构体信息的函数
-void print_ggml_tensor_info(const struct ggml_tensor *tensor)
-{
-    std::cout << "Tensor Information:" << std::endl;
-    std::cout << "Type: " << tensor->type << std::endl;
-    std::cout << "Backend: " << tensor->backend << std::endl;
-    std::cout << "Buffer: " << tensor->buffer << std::endl;
-    std::cout << "Dimensions (" << GGML_MAX_DIMS << "): ";
-    for (int i = 0; i < GGML_MAX_DIMS; ++i)
-    {
-        std::cout << tensor->ne[i] << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "Strides (bytes): ";
-    for (int i = 0; i < GGML_MAX_DIMS; ++i)
-    {
-        std::cout << tensor->nb[i] << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "Operation: " << tensor->op << std::endl;
-    std::cout << "Operation Parameters: ";
-    for (int i = 0; i < GGML_MAX_OP_PARAMS / sizeof(int32_t); ++i)
-    {
-        std::cout << tensor->op_params[i] << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "Flags: " << tensor->flags << std::endl;
-    std::cout << "Gradient Tensor: " << tensor->grad << std::endl;
-    std::cout << "Source Tensors (" << GGML_MAX_SRC << "): ";
-    for (int i = 0; i < GGML_MAX_SRC; ++i)
-    {
-        std::cout << tensor->src[i] << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "View Source Tensor: " << tensor->view_src << std::endl;
-    std::cout << "View Offset: " << tensor->view_offs << std::endl;
-    std::cout << "Data Pointer: " << tensor->data << std::endl;
-    std::cout << "Name: " << tensor->name << std::endl;
-    std::cout << "Extra Data: " << tensor->extra << std::endl;
-
-    // 打印data中的数据
-    if (tensor->data != NULL )
-    {
-        std::cout << "Data (fp32):" << std::endl;
-        const float *data = reinterpret_cast<const float *>(tensor->data);
-        size_t total_elements = 1;
-        for (int i = 0; i < GGML_MAX_DIMS; ++i)
-        {
-            total_elements *= tensor->ne[i];
-        }
-
-        for (size_t i = 0; i < total_elements; ++i)
-        {
-            float float_value;
-            float_value =data[i];
-         
-            if (std::fabs(float_value) < 1e-6) {
-                float_value = 0.0;
-            }
-            std::cout << std::fixed << std::setprecision(3) << float_value << " ";
-            if ((i + 1) % tensor->ne[0] == 0)
-            {
-                std::cout << std::endl;
-            }
-            if ((i + 1) % (32*128) == 0&&tensor->type==1)
-            {
-                std::cout << std::endl;
-            }
-        }
-    }
-}
-void set_tensor_zero(struct ggml_tensor *tensor){
-    if (tensor->data != NULL && tensor->type == GGML_TYPE_F32)
-    {
-        
-        float *data = reinterpret_cast< float *>(tensor->data);
-        size_t total_elements = 1;
-        for (int i = 0; i < GGML_MAX_DIMS; ++i)
-        {
-            total_elements *= tensor->ne[i];
-        }
-
-        for (size_t i = 0; i < total_elements; ++i)
-        {
-             data[i] =0;
-        }
-    }
-
-}
-struct ggml_tensor *kq0_copy;
 
 static struct ggml_tensor *llm_build_kqv(
     struct ggml_context *ctx,
@@ -9980,24 +9874,7 @@ static struct ggml_tensor *llm_build_kqv(
         // kq->extra=reinterpret_cast<void*>(static_cast<uintptr_t>(-7777));
         cb(kq, "kq_soft_max_ext", il);
        
-        if(il==0){
-            // kq0_copy=kq;
-            kq0_copy = ggml_dup_tensor(ctx,kq);
-        }
-        // ggml_build_forward_expand(graph, kq0_copy);
-        // coolling:score store
-        if (compare_ne_arrays(kv.score_l[il], kq))
-        {
-            // printf("add!!%d\n", il);
-            struct ggml_tensor * pad=ggml_pad(ctx,kq,kv.score_l[il]->ne[0]-kq->ne[0],0,0,0);
-            ggml_add_inplace(ctx, kv.score_l[il], pad);
-            ggml_build_forward_expand(graph, kv.score_l[il]);
-        }
-        else
-        {
-            set_tensor_zero(kv.score_l[il]);
-        }
-        cb(kv.score_l[il], " kv_score_l", il);
+
         GGML_ASSERT(kv.size == n_ctx);
 
         // split cached v into n_head heads
@@ -16757,20 +16634,10 @@ static int llama_decode_internal(
             {
                 kv_self.head = 0;
             }
-            // printf("\n\nbefore update:\n");
-            // printf("\n\nbefore update: %d\n",kv_self.used);
-            // print_ggml_tensor_info(kv_self.k_l[0]);
 
             if (!llama_kv_cache_find_slot(kv_self, u_batch))
             {
-                
-                // llama_kv_cache_seq_rm(&lctx,0,0,1);
-                // llama_kv_cache_seq_add(&lctx,0,-1,-1,-1);
-                // llama_kv_cache_update(&lctx);
-                // printf("\n\nafter update: %d\n",kv_self.used);
-                // print_ggml_tensor_info(kv_self.k_l[0]);
                 return 1;
-
             }
 
             if (!kv_self.recurrent)
@@ -16919,7 +16786,7 @@ static int llama_decode_internal(
     // decide if we need to defrag the kv cache
     if (cparams.causal_attn && cparams.defrag_thold >= 0.0f)
     {
-        const float fragmentation = kv_self.n >= 32 ? 1.0f - float(kv_self.used) / float(kv_self.n) : 0.0f;
+        const float fragmentation = kv_self.n >= 128 ? 1.0f - float(kv_self.used) / float(kv_self.n) : 0.0f;
 
         // queue defragmentation for next llama_kv_cache_update
         if (fragmentation > cparams.defrag_thold)
@@ -19390,16 +19257,12 @@ struct llama_context *llama_new_context_with_model(
             {
                 memory_size_v += ggml_nbytes(v);
             }
-            for (auto &score : ctx->kv_self.score_l)
-            {
-                memory_size_score += ggml_nbytes(score);
-            }
 
-            LLAMA_LOG_INFO("%s: KV self size  = %7.2f MiB, K (%s): %7.2f MiB, V (%s): %7.2f MiB, Score (%s): %7.2f MiB\n", __func__,
-                           (float)(memory_size_k + memory_size_v + memory_size_score) / (1024.0f * 1024.0f),
+            LLAMA_LOG_INFO("%s: KV self size  = %7.2f MiB, K (%s): %7.2f MiB, V (%s): %7.2f MiB\n", __func__,
+                           (float)(memory_size_k + memory_size_v) / (1024.0f * 1024.0f),
                            ggml_type_name(type_k), (float)memory_size_k / (1024.0f * 1024.0f),
-                           ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f),
-                           ggml_type_name(type_k), (float)memory_size_score / (1024.0f * 1024.0f));
+                           ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f))
+                           ;
         }
 
         // graph outputs buffer
@@ -22332,7 +22195,8 @@ void llama_log_callback_default(ggml_log_level level, const char *text, void *us
     fflush(stderr);
 }
 
-// coolling :kv delete
+// coolling 
+
 void kv_delete(struct llama_context *ctx)
 {
     while (1)
@@ -22341,17 +22205,13 @@ void kv_delete(struct llama_context *ctx)
         while (!ctx->kvDeleteCounter.count) {
             pthread_cond_wait(&ctx->kvDeleteCounter.cond, &ctx->kvDeleteCounter.lock);
         }
-        printf("kv used: %d\n", ctx->kv_self.used);
+        // Py_Initialize();   //初始化
+
+        // PyRun_SimpleString("print 'hello'");
+
+        // Py_Finalize();     //释放资源
         pthread_mutex_unlock(&(ctx->kvDeleteCounter.lock));
         sleep(1);
-// 系统是否空闲
-//   struct ggml_tensor * t=ggml_get_tensor(ctx,"kq_soft_max_ext_1");
-// 累积注意力分数最小的token
-// printf("\nkq0_copy\n");
-// print_ggml_tensor_info(kq0_copy);
-// printf("\nctx->kv_self.score_l[0]\n");
-// print_ggml_tensor_info(ctx->kv_self.score_l[0]);
-// printf("\nctx->kv_self.score_l[1]\n");
-// print_ggml_tensor_info(ctx->kv_self.score_l[1]);
+
     }
 }

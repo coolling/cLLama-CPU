@@ -19217,7 +19217,7 @@ void *producer_func(void *arg) {
                         }
 
                         // 在所有线程执行完毕后进行同步
-                        // #pragma omp barrier
+                        #pragma omp barrier
 
                         // over_count=0;//将变量重新设置为0
                         size_t load2=ggml_time_us();
@@ -19384,11 +19384,12 @@ void *producer_func(void *arg) {
         load+=load2-load1;
 
         layer_count=0;
-        printf("all load_time1: %.2f s\n",load / 1000000.0f);
-        for(int i=0;i<NUM_THREADS;i++){
-            printf("all load_time11 %d: %.2f s\n",i,load_time11[i] / 1000000.0f);
+        // coolling:print load time
+        // printf("all load_time1: %.2f s\n",load / 1000000.0f);
+        // for(int i=0;i<NUM_THREADS;i++){
+        //     printf("all load_time11 %d: %.2f s\n",i,load_time11[i] / 1000000.0f);
 
-        }
+        // }
         
     
        
@@ -19633,7 +19634,7 @@ void* monitor(void* arg) {
 }
 
 enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
-    printf("start\n");
+    // printf("start\n");
     wait_time1=0;
     wait_time2=0;
     wait_time3=0;
@@ -19716,10 +19717,11 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
     }
     ggml_graph_compute_thread(&workers[0]);
     size_t all2=ggml_time_us();
-    printf("all wait_time1: %.2f s\n",wait_time1 / 1000000.0f);
-    printf("all wait_time2: %.2f s\n",wait_time2 / 1000000.0f);
-    printf("all wait_time3: %.2f s\n",wait_time3 / 1000000.0f);
-    printf("all time: %.2f s\n",(all2-all1)/ 1000000.0f);
+    // coolling:print wait time
+    // printf("all wait_time1: %.2f s\n",wait_time1 / 1000000.0f);
+    // printf("all wait_time2: %.2f s\n",wait_time2 / 1000000.0f);
+    // printf("all wait_time3: %.2f s\n",wait_time3 / 1000000.0f);
+    // printf("all time: %.2f s\n",(all2-all1)/ 1000000.0f);
     return state_shared.ec;
 }
 
