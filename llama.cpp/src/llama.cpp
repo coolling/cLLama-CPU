@@ -10423,6 +10423,7 @@ struct llm_build_context
         cb(lctx.inp_KQ_mask_cross, "KQ_mask_cross", -1);
         return lctx.inp_KQ_mask_cross;
     }
+    
 
     struct ggml_cgraph *build_llama()
     {
@@ -22214,4 +22215,19 @@ void kv_delete(struct llama_context *ctx)
         sleep(1);
 
     }
+}
+int deleteKV(struct llama_context *ctx){
+    struct llama_kv_cache &kv_self = ctx->kv_self;
+    kv_self.head=0;
+    kv_self.size=0;
+    kv_self.used=0;
+    kv_self.n=0;
+    
+    return 0;
+
+}
+int addKV(struct llama_context *ctx){
+    struct llama_kv_cache &kv_self = ctx->kv_self;
+    return 0;
+
 }

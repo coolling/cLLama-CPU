@@ -1240,16 +1240,13 @@ GET_OBJ_FILE = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst %.cu,%.o,$(1))
 
 llama-cli: examples/main/main.cpp \
 	$(OBJ_ALL)
-	$(CXX) $(CXXFLAGS) -c $< -o $(call GET_OBJ_FILE, $<)
-	$(CXX) $(CXXFLAGS) $(filter-out %.h $<,$^) $(call GET_OBJ_FILE, $<) -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -c $< -I /usr/include/python3.10 -o $(call GET_OBJ_FILE, $<) 
+	$(CXX) $(CXXFLAGS) $(filter-out %.h $<,$^) $(call GET_OBJ_FILE, $<) -o $@ $(LDFLAGS) -L /usr/lib/python3.10/config-3.10-x86_64-linux-gnu/ -l python3.10
 	@echo
 	@echo '====  Run ./llama-cli -h for help.  ===='
 	@echo
 
-llama-infill: examples/infill/infill.cpp \
-	$(OBJ_ALL)
-	$(CXX) $(CXXFLAGS) -c $< -o $(call GET_OBJ_FILE, $<)
-	$(CXX) $(CXXFLAGS) $(filter-out %.h $<,$^) $(call GET_OBJ_FILE, $<) -o $@ $(LDFLAGS)
+
 
 llama-simple: examples/simple/simple.cpp \
 	$(OBJ_ALL)

@@ -1,6 +1,9 @@
 // 推理llama 2的主函数
 #include "common.h"
-
+#include <Python.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/embed.h>
 #include "console.h"
 #include "llama.h"
 
@@ -128,6 +131,7 @@ std::string getCurrentTimestamp() {
 // #include </usr/local/include/pybind11/pybind11.h>
 // #include </usr/local/include/pybind11/embed.h>
 // #include </usr/local/include/pybind11/stl.h>
+// #include <Python.h>
 // namespace py = pybind11;
 
 // 日志函数，接受日志消息和日志级别
@@ -141,24 +145,27 @@ void logMessage(const std::string& message, const std::string& level = "INFO") {
     }
 
     // 写入日志消息，包括时间戳和日志级别
-    std::string timestamp = getCurrentTimestamp(); // 这里可以替换为实际的时间戳
-    logFile << timestamp << " " << level << " - " << message << std::endl;
+    // std::string timestamp = getCurrentTimestamp(); // 这里可以替换为实际的时间戳
+    logFile <<level << " - " << message << std::endl;
 
     // 关闭文件
     logFile.close();
 }
 static std::string chat_add_and_format(struct llama_model * model, std::vector<llama_chat_msg> & chat_msgs, std::string role, std::string content) {
-    logMessage(content,role);
+    
     llama_chat_msg new_msg{role, content};
     auto formatted = llama_chat_format_single(
         model, g_params->chat_template, chat_msgs, new_msg, role == "user");
+    logMessage(formatted,role);
     chat_msgs.push_back({role, content});
     LOG("formatted: %s\n", formatted.c_str());
     return formatted;
 }
-
+namespace py = pybind11;
 int main(int argc, char ** argv) {
     // printf("coolling test\n");
+    py::scoped_interpreter guard{}; 
+    py::module math = py::module::import("short");
     gpt_params params;
     g_params = &params;
 
@@ -239,7 +246,7 @@ int main(int argc, char ** argv) {
     LOG("%s: load the model and apply lora adapter, if any\n", __func__);
     std::tie(model, ctx) = llama_init_from_gpt_params(params);
     
-    std::thread t(kv_delete, ctx);
+    // std::thread t(kv_delete, ctx);
     if (sparams.cfg_scale > 1.f) {
         struct llama_context_params lparams = llama_context_params_from_gpt_params(params);
         ctx_guidance = llama_new_context_with_model(model, lparams);
@@ -338,7 +345,6 @@ int main(int argc, char ** argv) {
     int original_prompt_len = 0;
     if (ctx_guidance) {
         LOG("cfg_negative_prompt: \"%s\"\n", log_tostr(sparams.cfg_negative_prompt));
-
         guidance_inp = ::llama_tokenize(ctx_guidance, sparams.cfg_negative_prompt, true, true);
         LOG("guidance_inp tokenized: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx_guidance, guidance_inp).c_str());
 
@@ -894,17 +900,23 @@ int main(int argc, char ** argv) {
             }
 
             if (n_past > 0 && is_interacting) {
-                Counter* kvDeleteCounter = getCounter(ctx);
                 LOG("waiting for user input\n");
-                pthread_mutex_lock(&(kvDeleteCounter->lock));
-                kvDeleteCounter->count=1;
-                pthread_cond_broadcast(&kvDeleteCounter->cond);
-                pthread_mutex_unlock(&(kvDeleteCounter->lock));
+                printf("waiting for user input\n");
+                //coolling:wait input
+                // Counter* kvDeleteCounter = getCounter(ctx);
+                
+                // pthread_mutex_lock(&(kvDeleteCounter->lock));
+                // kvDeleteCounter->count=1;
+                // pthread_cond_broadcast(&kvDeleteCounter->cond);
+                // pthread_mutex_unlock(&(kvDeleteCounter->lock));
+              
+                std::cout << "wait for suoju......" << std::endl;
+                py::object result = math.attr("suoju")(1);
+                deleteKV(ctx);
+                addKV(ctx);
 
-                if (params.conversation) {
-                    printf("\n> ");
-                }
 
+                
                 if (params.input_prefix_bos) {
                     LOG("adding input prefix BOS token\n");
                     embd_inp.push_back(llama_token_bos(model));
@@ -926,9 +938,9 @@ int main(int argc, char ** argv) {
                     another_line = console::readline(line, params.multiline_input);
                     buffer += line;
                 } while (another_line);
-                pthread_mutex_lock(&(kvDeleteCounter->lock));
-                kvDeleteCounter->count=0;
-                pthread_mutex_unlock(&(kvDeleteCounter->lock));
+                // pthread_mutex_lock(&(kvDeleteCounter->lock));
+                // kvDeleteCounter->count=0;
+                // pthread_mutex_unlock(&(kvDeleteCounter->lock));
                 // done taking input, reset color
                 console::set_display(console::reset);
                 display = true;

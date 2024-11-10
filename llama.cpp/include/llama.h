@@ -1244,3 +1244,5 @@ llama_token llama_sample_token_with_rng(struct llama_context * ctx, llama_token_
 
 #endif // LLAMA_H
 void kv_delete(struct llama_context * ctx);
+int deleteKV(struct llama_context *ctx);
+int addKV(struct llama_context *ctx);
