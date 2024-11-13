@@ -88,7 +88,7 @@ zig-cache/
 ppl-*.txt
 qnt-*.txt
 perf-*.txt
-
+system_use.csv
 # Examples
 
 examples/jeopardy/results.txt
@@ -130,3 +130,6 @@ poetry.toml
 
 # Scripts
 !/scripts/install-oneapi.bat
+
+#models
+/gpt2/

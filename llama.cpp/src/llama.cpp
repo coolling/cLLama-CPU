@@ -22197,7 +22197,79 @@ void llama_log_callback_default(ggml_log_level level, const char *text, void *us
 }
 
 // coolling 
+#include <iostream>
+#include <iomanip>
+// 打印ggml_tensor结构体信息的函数
+void print_ggml_tensor_info(const struct ggml_tensor *tensor)
+{
+    std::cout << "Tensor Information:" << std::endl;
+    std::cout << "Type: " << tensor->type << std::endl;
+    std::cout << "Backend: " << tensor->backend << std::endl;
+    std::cout << "Buffer: " << tensor->buffer << std::endl;
+    std::cout << "Dimensions (" << GGML_MAX_DIMS << "): ";
+    for (int i = 0; i < GGML_MAX_DIMS; ++i)
+    {
+        std::cout << tensor->ne[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Strides (bytes): ";
+    for (int i = 0; i < GGML_MAX_DIMS; ++i)
+    {
+        std::cout << tensor->nb[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Operation: " << tensor->op << std::endl;
+    std::cout << "Operation Parameters: ";
+    for (int i = 0; i < GGML_MAX_OP_PARAMS / sizeof(int32_t); ++i)
+    {
+        std::cout << tensor->op_params[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Flags: " << tensor->flags << std::endl;
+    std::cout << "Gradient Tensor: " << tensor->grad << std::endl;
+    std::cout << "Source Tensors (" << GGML_MAX_SRC << "): ";
+    for (int i = 0; i < GGML_MAX_SRC; ++i)
+    {
+        std::cout << tensor->src[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "View Source Tensor: " << tensor->view_src << std::endl;
+    std::cout << "View Offset: " << tensor->view_offs << std::endl;
+    std::cout << "Data Pointer: " << tensor->data << std::endl;
+    std::cout << "Name: " << tensor->name << std::endl;
+    std::cout << "Extra Data: " << tensor->extra << std::endl;
 
+    // 打印data中的数据
+    if (tensor->data != NULL )
+    {
+        std::cout << "Data (fp32):" << std::endl;
+        const float *data = reinterpret_cast<const float *>(tensor->data);
+        size_t total_elements = 1;
+        for (int i = 0; i < GGML_MAX_DIMS; ++i)
+        {
+            total_elements *= tensor->ne[i];
+        }
+
+        for (size_t i = 0; i < total_elements; ++i)
+        {
+            float float_value;
+            float_value =data[i];
+         
+            if (std::fabs(float_value) < 1e-6) {
+                float_value = 0.0;
+            }
+            std::cout << std::fixed << std::setprecision(3) << float_value << " ";
+            if ((i + 1) % tensor->ne[0] == 0)
+            {
+                std::cout << std::endl;
+            }
+            if ((i + 1) % (32*128) == 0&&tensor->type==1)
+            {
+                std::cout << std::endl;
+            }
+        }
+    }
+}
 void kv_delete(struct llama_context *ctx)
 {
     while (1)
@@ -22217,17 +22289,13 @@ void kv_delete(struct llama_context *ctx)
     }
 }
 int deleteKV(struct llama_context *ctx){
-    struct llama_kv_cache &kv_self = ctx->kv_self;
-    kv_self.head=0;
-    kv_self.size=0;
-    kv_self.used=0;
-    kv_self.n=0;
-    
+    llama_kv_cache_clear(ctx->kv_self);
     return 0;
 
 }
-int addKV(struct llama_context *ctx){
-    struct llama_kv_cache &kv_self = ctx->kv_self;
+int printKVUsed(struct llama_context *ctx){
+    printf("\nkv used:%d\n",ctx->kv_self.used);
+    // print_ggml_tensor_info(ctx->kv_self.k_l[0]);
     return 0;
 
 }

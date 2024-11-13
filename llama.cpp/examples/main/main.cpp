@@ -2,8 +2,10 @@
 #include "common.h"
 #include <Python.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <pybind11/embed.h>
+
 #include "console.h"
 #include "llama.h"
 
@@ -133,7 +135,18 @@ std::string getCurrentTimestamp() {
 // #include </usr/local/include/pybind11/stl.h>
 // #include <Python.h>
 // namespace py = pybind11;
+#include <fstream>
 
+void clearFile(const std::string& filePath) {
+    std::ofstream fileStream(filePath, std::ios::out | std::ios::trunc);
+    if (fileStream) {
+        // 文件被打开并且内容被清空
+        fileStream.close();
+    } else {
+        // 打开文件失败的错误处理
+        std::cerr << "Unable to open file for writing: " << filePath << std::endl;
+    }
+}
 // 日志函数，接受日志消息和日志级别
 void logMessage(const std::string& message, const std::string& level = "INFO") {
     // 打开或创建日志文件
@@ -162,20 +175,53 @@ static std::string chat_add_and_format(struct llama_model * model, std::vector<l
     return formatted;
 }
 namespace py = pybind11;
-int main(int argc, char ** argv) {
-    // printf("coolling test\n");
-    py::scoped_interpreter guard{}; 
-    py::module math = py::module::import("short");
-    gpt_params params;
-    g_params = &params;
+py::scoped_interpreter guard{}; //初始化Python解释器，允许C++代码执行Python代码。
 
+py::module math = py::module::import("short");//导入名为"short"的Python模块。
+Counter cpuMonitor; //控制何时开始优化
+//调用预测模型
+void monitorUse(){
+ 
+    while(1){
+        int flag=1;
+        py::object result = math.attr("build_predict_model")();
+        if (py::isinstance<py::list>(result)) {  // 检查是否为Python列表
+            auto vec = py::cast<std::vector<double>>(result);  // 转换为std::vector<int>
+            for (double value : vec) {
+                std::cout << value << std::endl;  // 遍历并打印每个元素
+                if(value>5){
+                    flag=0;
+                    break;
+                }
+            }
+        } else {
+            std::cerr << "Result is not a list." << std::endl;
+        }
+        if(flag==1){
+            pthread_mutex_lock(&cpuMonitor.lock);
+            cpuMonitor.count=1;
+            pthread_mutex_unlock(&cpuMonitor.lock);
+
+        }
+        sleep(60);
+    }
+    
+}
+int main(int argc, char ** argv) {
+    clearFile("application.log");
+    //coolling：定时预测
+    std::thread t(monitorUse);
+    
+    gpt_params params;//定义了gpt_params结构体来存储命令行参数
+    g_params = &params;
+    //使用gpt_params_parse函数解析这些参数
     if (!gpt_params_parse(argc, argv, params)) {
         gpt_params_print_usage(argc, argv, params);
         return 1;
     }
 
     llama_sampling_params & sparams = params.sparams;
-
+//使用LOG_TEE和LOG宏来记录日志信息，包括程序启动、命令行参数和模型构建信息
 #ifndef LOG_DISABLE_LOGS
     log_set_target(log_filename_generator("main", "log"));
     LOG_TEE("Log start\n");
@@ -188,6 +234,7 @@ int main(int argc, char ** argv) {
 
     // save choice to use color for later
     // (note for later: this is a slightly awkward choice)
+    //console::init函数初始化控制台，设置是否使用颜色输出
     console::init(params.simple_io, params.use_color);
     atexit([]() { console::cleanup(); });
 
@@ -243,6 +290,7 @@ int main(int argc, char ** argv) {
     g_ctx = &ctx;
 
     // load the model and apply lora adapter, if any
+    //使用llama_init_from_gpt_params函数加载模型和上下文
     LOG("%s: load the model and apply lora adapter, if any\n", __func__);
     std::tie(model, ctx) = llama_init_from_gpt_params(params);
     
@@ -283,7 +331,7 @@ int main(int argc, char ** argv) {
 
     std::string path_session = params.path_prompt_cache;
     std::vector<llama_token> session_tokens;
-
+    //如果设置了会话文件路径（path_session），则尝试从文件加载会话。
     if (!path_session.empty()) {
         LOG_TEE("%s: attempting to load saved session from '%s'\n", __func__, path_session.c_str());
         if (!file_exists(path_session)) {
@@ -303,7 +351,7 @@ int main(int argc, char ** argv) {
         }
     }
 
-    const bool add_bos = llama_should_add_bos_token(model);
+    const bool add_bos = llama_should_add_bos_token(model);//检查模型是否需要在输入开始处添加BOS（Beginning of Sentence）标记。
     if (!llama_model_has_encoder(model)) {
         GGML_ASSERT(llama_add_eos_token(model) != 1);
     }
@@ -312,13 +360,15 @@ int main(int argc, char ** argv) {
     std::vector<llama_token> embd_inp;
 
     {
+        //根据是否是对话模式、是否启用聊天模板以及用户提示是否为空，来决定是否格式化系统提示
         auto prompt = (params.conversation && params.enable_chat_template && !params.prompt.empty())
             ? chat_add_and_format(model, chat_msgs, "system", params.prompt) // format the system prompt in conversation mode
             : params.prompt;
+            //如果是交互式首次或有用户提示或会话标记为空，则对提示进行分词（llama_tokenize）。
         if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
             LOG("tokenize the prompt\n");
             embd_inp = ::llama_tokenize(ctx, prompt, true, true);
-        } else {
+        } else {//如果提示为空，则使用会话标记
             LOG("use session tokens\n");
             embd_inp = session_tokens;
         }
@@ -382,7 +432,7 @@ int main(int argc, char ** argv) {
             LOG_TEE("%s: session file matches %zu / %zu tokens of prompt\n",
                 __func__, n_matching_session_tokens, embd_inp.size());
         }
-
+        //如果使用缓存并且会话标记与提示完全匹配，但会话标记的长度超过了提示的长度，则调整会话标记的长度，以重新计算缓存的逻辑。
         // remove any "future" tokens that we might have inherited from the previous session
         llama_kv_cache_seq_rm(ctx, -1, n_matching_session_tokens, -1);
     }
@@ -403,6 +453,7 @@ int main(int argc, char ** argv) {
     if (params.n_keep < 0 || params.n_keep > (int) embd_inp.size()) {
         params.n_keep = (int)embd_inp.size();
     } else {
+       
         params.n_keep += add_bos; // always keep the BOS token
     }
 
@@ -503,9 +554,9 @@ int main(int argc, char ** argv) {
 
     // group-attention state
     // number of grouped KV tokens so far (used only if params.grp_attn_n > 1)
-    int ga_i = 0;
+    int ga_i = 0;//用于跟踪到目前为止分组的KV（Key-Value）标记的数量。仅当params.grp_attn_n > 1时使用
 
-    const int ga_n = params.grp_attn_n;
+    const int ga_n = params.grp_attn_n;//分别表示群组注意力的数量和宽度。
     const int ga_w = params.grp_attn_w;
 
     if (ga_n != 1) {
@@ -535,21 +586,22 @@ int main(int argc, char ** argv) {
 
         is_interacting = params.interactive_first;
     }
+    //这些布尔变量用于控制程序的逻辑流程，如是否处理反提示、是否回显输入、是否显示输出以及是否需要保存会话状态
 
     bool is_antiprompt        = false;
     bool input_echo           = true;
     bool display              = true;
     bool need_to_save_session = !path_session.empty() && n_matching_session_tokens < embd_inp.size();
-
-    int n_past             = 0;
-    int n_remain           = params.n_predict;
+    //这些整数变量用于跟踪文本生成过程中的各个阶段的进度
+    int n_past             = 0;//这个变量表示到目前为止已经处理过的输入标记的数量
+    int n_remain           = params.n_predict;//这个变量表示剩余需要生成的标记数量
     int n_consumed         = 0;
     int n_session_consumed = 0;
     int n_past_guidance    = 0;
 
-    std::vector<int>   input_tokens;  g_input_tokens  = &input_tokens;
+    std::vector<int>   input_tokens;  g_input_tokens  = &input_tokens;//分别存储输入和输出的标记
     std::vector<int>   output_tokens; g_output_tokens = &output_tokens;
-    std::ostringstream output_ss;     g_output_ss     = &output_ss;
+    std::ostringstream output_ss;     g_output_ss     = &output_ss;//分别用于存储输出字符串和助手消息的字符串流
     std::ostringstream assistant_ss; // for storing current assistant message, used in conversation mode
 
     // the first thing we will do is to output the prompt, so set color accordingly
@@ -560,14 +612,14 @@ int main(int argc, char ** argv) {
     std::vector<llama_token> embd_guidance;
 
     // tokenized antiprompts
-    std::vector<std::vector<llama_token>> antiprompt_ids;
+    std::vector<std::vector<llama_token>> antiprompt_ids;//存储反提示的分词结果，用于在生成过程中检测特定的反提示标记
 
     antiprompt_ids.reserve(params.antiprompt.size());
     for (const std::string & antiprompt : params.antiprompt) {
         antiprompt_ids.emplace_back(::llama_tokenize(ctx, antiprompt, false, true));
     }
 
-    struct llama_sampling_context * ctx_sampling = llama_sampling_init(sparams);
+    struct llama_sampling_context * ctx_sampling = llama_sampling_init(sparams);//初始化采样上下文，用于后续的文本生成采样过程
     if (!ctx_sampling) {
         fprintf(stderr, "%s: failed to initialize sampling subsystem\n", __func__);
         exit(1);
@@ -590,13 +642,16 @@ int main(int argc, char ** argv) {
         embd_inp.clear();
         embd_inp.push_back(decoder_start_token_id);
     }
-
+// 这个循环会持续进行，直到满足以下条件之一：
+// n_remain（剩余需要生成的标记数）为0，且没有检测到反提示（is_antiprompt）。
+// 用户处于交互模式（params.interactive）
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {
+            //如果嵌入式输入大小超过了上下文限制，会截断输入并给出错误提示
             // Note: (n_ctx - 4) here is to match the logic for commandline prompt handling via
             // --prompt or --file which uses the same value.
-            int max_embd_size = n_ctx - 4;
+            int max_embd_size = n_ctx - 4;//定义最大的嵌入式输入大小，以确保不超过模型的上下文限制。
 
             // Ensure the input doesn't exceed the context size by truncating embd if necessary.
             if ((int) embd.size() > max_embd_size) {
@@ -758,7 +813,7 @@ int main(int argc, char ** argv) {
 
         embd.clear();
         embd_guidance.clear();
-
+        //如果所有的输入都已经处理完毕，且不在交互模式，那么生成新的标记。
         if ((int) embd_inp.size() <= n_consumed && !is_interacting) {
             // optionally save the session on first sample (for faster prompt loading next time)
             if (!path_session.empty() && need_to_save_session && !params.prompt_cache_ro) {
@@ -786,6 +841,7 @@ int main(int argc, char ** argv) {
         } else {
             // some user input remains from prompt or interaction, forward it to processing
             LOG("embd_inp.size(): %d, n_consumed: %d\n", (int) embd_inp.size(), n_consumed);
+            //如果还有未处理的输入，继续处理这些输入。
             while ((int) embd_inp.size() > n_consumed) {
                 embd.push_back(embd_inp[n_consumed]);
 
@@ -900,23 +956,47 @@ int main(int argc, char ** argv) {
             }
 
             if (n_past > 0 && is_interacting) {
+                printKVUsed(ctx);
                 LOG("waiting for user input\n");
-                printf("waiting for user input\n");
                 //coolling:wait input
-                // Counter* kvDeleteCounter = getCounter(ctx);
-                
-                // pthread_mutex_lock(&(kvDeleteCounter->lock));
-                // kvDeleteCounter->count=1;
-                // pthread_cond_broadcast(&kvDeleteCounter->cond);
-                // pthread_mutex_unlock(&(kvDeleteCounter->lock));
-              
-                std::cout << "wait for suoju......" << std::endl;
-                py::object result = math.attr("suoju")(1);
-                deleteKV(ctx);
-                addKV(ctx);
+                pthread_mutex_lock(&cpuMonitor.lock);
+                if(cpuMonitor.count==1&&n_past>0){//可以进行优化
+                    std::cout << "wait for suoju......" << std::endl;
+                    py::object result = math.attr("suoju")(1);
+                    // 将py::object转换为std::string
+                    auto prompt = py::cast<std::string>(result);
 
+                    // 打印C++字符串变量
+                    std::cout << "suoju result:"<<prompt << std::endl;
 
-                
+                    deleteKV(ctx);
+                    std::cout << "delete kv ok" << std::endl;
+                    //根据是否是对话模式、是否启用聊天模板以及用户提示是否为空，来决定是否格式化系统提示
+                    
+            
+                    n_past             = 0;//这个变量表示到目前为止已经处理过的输入标记的数量
+                    n_remain           = params.n_predict;//这个变量表示剩余需要生成的标记数量
+                    n_consumed         = 0;
+                    n_session_consumed = 0;
+                    n_past_guidance    = 0;
+                    input_tokens.clear();
+                    output_tokens.clear();
+                    output_ss.str("");
+                    assistant_ss.str("");
+                    embd.clear();
+                    embd_guidance.clear();
+                    antiprompt_ids.clear();
+                   
+                    embd_inp = ::llama_tokenize(ctx, prompt, true, true);
+                    cpuMonitor.count=0;
+                    std::cout << "add new kv......" << std::endl;
+                    pthread_mutex_unlock(&cpuMonitor.lock);
+                    continue;
+                    
+
+                }
+                pthread_mutex_unlock(&cpuMonitor.lock);
+
                 if (params.input_prefix_bos) {
                     LOG("adding input prefix BOS token\n");
                     embd_inp.push_back(llama_token_bos(model));
@@ -935,8 +1015,10 @@ int main(int argc, char ** argv) {
                 std::string line;
                 bool another_line = true;
                 do {
+                    
                     another_line = console::readline(line, params.multiline_input);
                     buffer += line;
+
                 } while (another_line);
                 // pthread_mutex_lock(&(kvDeleteCounter->lock));
                 // kvDeleteCounter->count=0;
@@ -1012,6 +1094,7 @@ int main(int argc, char ** argv) {
         }
 
         // end of generation
+        //如果生成的最后一个标记是结束标记（EOG），并且不在交互模式，那么结束生成
         if (!embd.empty() && llama_token_is_eog(model, embd.back()) && !(params.interactive)) {
             LOG_TEE(" [end of text]\n");
             break;
@@ -1024,7 +1107,7 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
-
+//如果设置了会话路径，需要保存会话，并且会话不是只读的，那么保存当前会话状态
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG_TEE("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
         llama_state_save_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());

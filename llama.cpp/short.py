@@ -1,33 +1,79 @@
-# # https://huggingface.co/suriya7/bart-finetuned-text-summarization
-# from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-# tokenizer = AutoTokenizer.from_pretrained("/mnt/nvme1n1/cyl/suoju/suriya7/bart-finetuned-text-summarization")
-# model = AutoModelForSeq2SeqLM.from_pretrained("/mnt/nvme1n1/cyl/suoju/suriya7/bart-finetuned-text-summarization")
-
-# def generate_summary(text):
-#     inputs = tokenizer([text], max_length=1024, return_tensors='pt', truncation=True)
-#     summary_ids = model.generate(inputs['input_ids'], max_new_tokens=100, do_sample=False)
-#     summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-#     return summary
-# with open('/mnt/nvme2n1/cyl/cyl/cLLama-CPU/llama.cpp/application.log', 'r') as f: 
-#     file_data = f.read() 
-# text_to_summarize = file_data 
-# print(text_to_summarize)
-# # text_to_summarize = """Now, there is no doubt that one of the most important aspects of any Pixel phone is its camera.And there might be good news for all camera lovers. Rumours have suggested that the Pixel 9 could come with a telephoto lens,improving its photography capabilities even further. Google will likely continue to focus on using AI to enhance its camera performance,in order to make sure that Pixel phones remain top contenders in the world of mobile photography."""
-# summary = generate_summary(text_to_summarize)
-# print(summary)
-from transformers import pipeline
-
+import psutil
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
+from datetime import datetime, timedelta
+import threading
+import time
+import multiprocessing
+from multiprocessing import Manager
+import pickle
+import pandas as pd
+import os
+from selective_context import SelectiveContext
+sc = SelectiveContext(model_type='gpt2', lang='en')
 def suoju(a):
-    summarizer = pipeline("summarization", model="/mnt/nvme1n1/cyl/facebook/bart-large-cnn", batch_size=20,device=-1)
-
+    
     with open('/mnt/nvme2n1/cyl/cyl/cLLama-CPU/llama.cpp/application.log', 'r') as f: 
         file_data = f.read() 
-    ARTICLE = file_data 
+    text = file_data 
     if a==0:
-        ARTICLE='test'
-    re=(summarizer(ARTICLE, max_length=int(len(ARTICLE)*0.8)+1, min_length=int(len(ARTICLE)*0.5), do_sample=True))
-    print(re)
-    return re
+        text='system - <|im_start|>system Hello,world!<|im_end|>'
+    context, reduced_content = sc(text)
+    print(context)
+    return context
+    # print(reduced_content)
 
+
+
+
+# 监控系统资源使用情况的函数，运行在单独的线程中
+def monitor_system_usage(interval=1,file_path='system_use.csv'):
+    count=0
+    while True:
+        try:
+            cpu_percent = psutil.cpu_percent(interval=1)
+            timestamp = datetime.now()
+            data_point ={'timestamp': timestamp, 'cpu_usage': cpu_percent}
+            data_frame = pd.DataFrame([data_point],index=[data_point['timestamp']])
+            count+=1
+            if not os.path.exists(file_path):
+                data_frame.to_csv(file_path, mode='w', index=False, header=True)
+            else:
+                data_frame.to_csv(file_path, mode='a', index=False, header=False)
+            time.sleep(interval)
+        except KeyboardInterrupt:
+            print("Caught KeyboardInterrupt, terminating processes.")
+            return 0
+
+
+
+def build_predict_model(file_path='system_use.csv', order=(5, 1, 0)):
+    start_time = time.time()  # 记录开始时间
+    # 从CSV文件中读取数据
+    data = pd.read_csv(file_path)
+    if data.empty:
+        print("No data collected yet.")
+        return None, None
+    data['timestamp'] = pd.to_datetime(data['timestamp'])
+    data.set_index('timestamp', inplace=True)
+    data.index = pd.DatetimeIndex(data.index).to_period('s')  # 将索引转换为周期
+    
+    # 建立ARIMA模型
+    
+    model = ARIMA(data['cpu_usage'], order=order)
+    model_fit = model.fit()
+    # 预测未来5个时间点的CPU使用率
+    forecast = model_fit.forecast(steps=5)
+    end_time = time.time()  # 记录结束时间
+    print(f"执行时间：{end_time - start_time}秒")
+    # 生成预测结果的索引
+    last_column = forecast.tolist()
+    # print(last_column)
+    return  last_column
+
+# process = multiprocessing.Process(target=monitor_system_usage, args=(1,'system_use.csv'))
+# process.start()
 suoju(0)
+build_predict_model()
