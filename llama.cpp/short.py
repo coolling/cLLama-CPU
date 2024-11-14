@@ -12,16 +12,43 @@ import pickle
 import pandas as pd
 import os
 from selective_context import SelectiveContext
-sc = SelectiveContext(model_type='gpt2', lang='en')
+import psutil
+import os
+
+def measure_memory(process_name=None):
+    # 获取当前进程
+    if process_name is None:
+        process = psutil.Process(os.getpid())
+    else:
+        for proc in psutil.process_iter(['pid', 'name']):
+            if proc.info['name'] == process_name:
+                process = proc
+                break
+        else:
+            return "Process not found"
+
+    # 内存使用情况
+    mem = process.memory_info()
+    return mem.rss  # 返回常驻集大小，以字节为单位
+
 def suoju(a):
     
     with open('/mnt/nvme2n1/cyl/cyl/cLLama-CPU/llama.cpp/application.log', 'r') as f: 
         file_data = f.read() 
     text = file_data 
+    print(f"缩句长度：{len(text)}")
+    start_time = time.time()  # 记录开始时间
+    sc = SelectiveContext(model_type='gpt2', lang='en')
+    # print("Memory usage:", measure_memory(), "bytes")
     if a==0:
         text='system - <|im_start|>system Hello,world!<|im_end|>'
     context, reduced_content = sc(text)
-    print(context)
+    # print("Memory usage:", measure_memory(), "bytes")
+    end_time = time.time()  # 记录结束时间
+    print(f"缩句时间：{end_time - start_time}秒")
+    print(f"缩句成功长度：{len(context)}")
+    with open('/mnt/nvme2n1/cyl/cyl/cLLama-CPU/llama.cpp/application.log', 'w') as f:
+        f.write(context)
     return context
     # print(reduced_content)
 
@@ -75,5 +102,5 @@ def build_predict_model(file_path='system_use.csv', order=(5, 1, 0)):
 
 # process = multiprocessing.Process(target=monitor_system_usage, args=(1,'system_use.csv'))
 # process.start()
-suoju(0)
-build_predict_model()
+suoju(1)
+# build_predict_model()

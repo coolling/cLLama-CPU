@@ -191,7 +191,7 @@ void monitorUse(){
         if (py::isinstance<py::list>(result)) {  // 检查是否为Python列表
             auto vec = py::cast<std::vector<double>>(result);  // 转换为std::vector<int>
             for (double value : vec) {
-                std::cout << value << std::endl;  // 遍历并打印每个元素
+                // std::cout << value << std::endl;  // 遍历并打印每个元素
                 if(value>5){
                     flag=0;
                     break;
@@ -652,8 +652,8 @@ int main(int argc, char ** argv) {
         
         // predict
         if (!embd.empty()) {
-            printf("11\n");
-            printKVUsed(ctx);
+            // printf("11\n");
+            // printKVUsed(ctx);
             //如果嵌入式输入大小超过了上下文限制，会截断输入并给出错误提示
             // Note: (n_ctx - 4) here is to match the logic for commandline prompt handling via
             // --prompt or --file which uses the same value.
@@ -815,8 +815,8 @@ int main(int argc, char ** argv) {
                 session_tokens.insert(session_tokens.end(), embd.begin(), embd.end());
                 n_session_consumed = session_tokens.size();
             }
-            printf("22\n");
-            printKVUsed(ctx);
+            // printf("22\n");
+            // printKVUsed(ctx);
         }
 
         embd.clear();
@@ -964,12 +964,12 @@ int main(int argc, char ** argv) {
             }
 
             if (n_past > 0 && is_interacting) {
-                printKVUsed(ctx);
+                // printKVUsed(ctx);
                 LOG("waiting for user input\n");
                 //coolling:wait input
                 
                 if (params.conversation) {
-                    LOG("\n> ");
+                    printf("\n> ");
                 }
                 if (params.input_prefix_bos) {
                     LOG("adding input prefix BOS token\n");
@@ -985,15 +985,6 @@ int main(int argc, char ** argv) {
                 // color user input only
                 console::set_display(console::user_input);
                 display = params.display_prompt;
-
-                // std::string line;
-                // bool another_line = true;
-                // do {
-                    
-                //     another_line = console::readline(line, params.multiline_input);
-                //     buffer += line;
-
-                // } while (another_line);
                  // 保存原始的终端属性
                  //coolling:input and monitor
                 struct termios orig_termios;
@@ -1033,7 +1024,7 @@ int main(int argc, char ** argv) {
                                 auto prompt = py::cast<std::string>(result);
 
                                 // 打印C++字符串变量
-                                std::cout << "suoju result:"<<prompt << std::endl;
+                                // std::cout << "suoju result:"<<prompt << std::endl;
 
                                 deleteKV(ctx);
                                 std::cout << "delete kv ok" << std::endl;
@@ -1084,7 +1075,7 @@ int main(int argc, char ** argv) {
                     continue;
                 }
                 // 打印缓冲区中的所有内容
-                std::cout << "Input received: " << buffer << std::endl;
+                // std::cout << "Input received: " << buffer << std::endl;
 
                 // 恢复终端属性
                 tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
