@@ -21,6 +21,9 @@
 #include <string>
 #include <vector>
 
+#include <sys/select.h>
+#include <sys/time.h>
+#include <termios.h>
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <signal.h>
 #include <unistd.h>
@@ -646,8 +649,11 @@ int main(int argc, char ** argv) {
 // n_remain（剩余需要生成的标记数）为0，且没有检测到反提示（is_antiprompt）。
 // 用户处于交互模式（params.interactive）
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
+        
         // predict
         if (!embd.empty()) {
+            printf("11\n");
+            printKVUsed(ctx);
             //如果嵌入式输入大小超过了上下文限制，会截断输入并给出错误提示
             // Note: (n_ctx - 4) here is to match the logic for commandline prompt handling via
             // --prompt or --file which uses the same value.
@@ -809,6 +815,8 @@ int main(int argc, char ** argv) {
                 session_tokens.insert(session_tokens.end(), embd.begin(), embd.end());
                 n_session_consumed = session_tokens.size();
             }
+            printf("22\n");
+            printKVUsed(ctx);
         }
 
         embd.clear();
@@ -959,44 +967,10 @@ int main(int argc, char ** argv) {
                 printKVUsed(ctx);
                 LOG("waiting for user input\n");
                 //coolling:wait input
-                pthread_mutex_lock(&cpuMonitor.lock);
-                if(cpuMonitor.count==1&&n_past>0){//可以进行优化
-                    std::cout << "wait for suoju......" << std::endl;
-                    py::object result = math.attr("suoju")(1);
-                    // 将py::object转换为std::string
-                    auto prompt = py::cast<std::string>(result);
-
-                    // 打印C++字符串变量
-                    std::cout << "suoju result:"<<prompt << std::endl;
-
-                    deleteKV(ctx);
-                    std::cout << "delete kv ok" << std::endl;
-                    //根据是否是对话模式、是否启用聊天模板以及用户提示是否为空，来决定是否格式化系统提示
-                    
-            
-                    n_past             = 0;//这个变量表示到目前为止已经处理过的输入标记的数量
-                    n_remain           = params.n_predict;//这个变量表示剩余需要生成的标记数量
-                    n_consumed         = 0;
-                    n_session_consumed = 0;
-                    n_past_guidance    = 0;
-                    input_tokens.clear();
-                    output_tokens.clear();
-                    output_ss.str("");
-                    assistant_ss.str("");
-                    embd.clear();
-                    embd_guidance.clear();
-                    antiprompt_ids.clear();
-                   
-                    embd_inp = ::llama_tokenize(ctx, prompt, true, true);
-                    cpuMonitor.count=0;
-                    std::cout << "add new kv......" << std::endl;
-                    pthread_mutex_unlock(&cpuMonitor.lock);
-                    continue;
-                    
-
+                
+                if (params.conversation) {
+                    LOG("\n> ");
                 }
-                pthread_mutex_unlock(&cpuMonitor.lock);
-
                 if (params.input_prefix_bos) {
                     LOG("adding input prefix BOS token\n");
                     embd_inp.push_back(llama_token_bos(model));
@@ -1012,14 +986,108 @@ int main(int argc, char ** argv) {
                 console::set_display(console::user_input);
                 display = params.display_prompt;
 
-                std::string line;
-                bool another_line = true;
-                do {
+                // std::string line;
+                // bool another_line = true;
+                // do {
                     
-                    another_line = console::readline(line, params.multiline_input);
-                    buffer += line;
+                //     another_line = console::readline(line, params.multiline_input);
+                //     buffer += line;
 
-                } while (another_line);
+                // } while (another_line);
+                 // 保存原始的终端属性
+                 //coolling:input and monitor
+                struct termios orig_termios;
+                tcgetattr(STDIN_FILENO, &orig_termios);
+
+                // 复制原始的终端属性并修改新的属性
+                struct termios new_termios = orig_termios;
+                new_termios.c_lflag &= ~(ICANON); // 关闭规范输入和回显
+                new_termios.c_lflag |= ECHO; 
+
+                // 应用新的终端属性
+                tcsetattr(STDIN_FILENO, TCSANOW, &new_termios);
+
+                fd_set readfds;
+                struct timeval timeout;
+                char ch;
+                int flag1=0;
+                while (true) {
+                    FD_ZERO(&readfds);
+                    FD_SET(STDIN_FILENO, &readfds);
+
+                    timeout.tv_sec = 5; // 超时时间设置为1秒
+                    timeout.tv_usec = 0;
+
+                    int ret = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+
+                    if (ret == -1) {
+                        perror("select()");
+                        break;
+                    } else if (ret == 0) {
+                        if(buffer.length()==0){
+                            pthread_mutex_lock(&cpuMonitor.lock);
+                            if(cpuMonitor.count==1&&n_past>0){//可以进行优化
+                                std::cout << "wait for suoju......" << std::endl;
+                                py::object result = math.attr("suoju")(1);
+                                // 将py::object转换为std::string
+                                auto prompt = py::cast<std::string>(result);
+
+                                // 打印C++字符串变量
+                                std::cout << "suoju result:"<<prompt << std::endl;
+
+                                deleteKV(ctx);
+                                std::cout << "delete kv ok" << std::endl;
+                                //根据是否是对话模式、是否启用聊天模板以及用户提示是否为空，来决定是否格式化系统提示
+                                
+                        
+                                n_past             = 0;//这个变量表示到目前为止已经处理过的输入标记的数量
+                                n_remain           = params.n_predict;//这个变量表示剩余需要生成的标记数量
+                                n_consumed         = 0;
+                                n_session_consumed = 0;
+                                n_past_guidance    = 0;
+                                input_tokens.clear();
+                                output_tokens.clear();
+                                output_ss.str("");
+                                assistant_ss.str("");
+                                embd.clear();
+                                embd_guidance.clear();
+                                antiprompt_ids.clear();
+                            
+                                embd_inp = ::llama_tokenize(ctx, prompt, true, true);
+                                cpuMonitor.count=0;
+                                std::cout << "add new kv......" << std::endl;
+                                pthread_mutex_unlock(&cpuMonitor.lock);
+                                flag1=1;
+                                break;
+                                
+
+                            }
+                            pthread_mutex_unlock(&cpuMonitor.lock);
+
+                        }
+
+                    } else {
+                        if (FD_ISSET(STDIN_FILENO, &readfds)) {
+                            // 读取一个字符
+                            if (read(STDIN_FILENO, &ch, 1) > 0) {
+                                buffer += ch; // 将字符追加到缓冲区
+                                // std::cout << "First character entered: " << buffer.length() << std::endl;
+                                // 检查是否到达输入流的末尾
+                                if (ch == '\n' || ch == '\004') { // '\n'是换行符，'\004'是EOF
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                if(flag1==1){
+                    continue;
+                }
+                // 打印缓冲区中的所有内容
+                std::cout << "Input received: " << buffer << std::endl;
+
+                // 恢复终端属性
+                tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
                 // pthread_mutex_lock(&(kvDeleteCounter->lock));
                 // kvDeleteCounter->count=0;
                 // pthread_mutex_unlock(&(kvDeleteCounter->lock));
