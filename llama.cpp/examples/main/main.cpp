@@ -1,10 +1,10 @@
 // 推理llama 2的主函数
 #include "common.h"
-#include <Python.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/stl.h>
-#include <pybind11/embed.h>
+// #include <Python.h>
+// #include <pybind11/pybind11.h>
+// #include <pybind11/numpy.h>
+// #include <pybind11/stl.h>
+// #include <pybind11/embed.h>
 
 #include "console.h"
 #include "llama.h"
@@ -177,43 +177,43 @@ static std::string chat_add_and_format(struct llama_model * model, std::vector<l
     LOG("formatted: %s\n", formatted.c_str());
     return formatted;
 }
-namespace py = pybind11;
-py::scoped_interpreter guard{}; //初始化Python解释器，允许C++代码执行Python代码。
+// namespace py = pybind11;
+// py::scoped_interpreter guard{}; //初始化Python解释器，允许C++代码执行Python代码。
 
-py::module math = py::module::import("short");//导入名为"short"的Python模块。
+// py::module math = py::module::import("short");//导入名为"short"的Python模块。
 Counter cpuMonitor; //控制何时开始优化
 //调用预测模型
 void monitorUse(){
  
-    while(1){
-        int flag=1;
-        py::object result = math.attr("build_predict_model")();
-        if (py::isinstance<py::list>(result)) {  // 检查是否为Python列表
-            auto vec = py::cast<std::vector<double>>(result);  // 转换为std::vector<int>
-            for (double value : vec) {
-                // std::cout << value << std::endl;  // 遍历并打印每个元素
-                if(value>5){
-                    flag=0;
-                    break;
-                }
-            }
-        } else {
-            std::cerr << "Result is not a list." << std::endl;
-        }
-        if(flag==1){
-            pthread_mutex_lock(&cpuMonitor.lock);
-            cpuMonitor.count=1;
-            pthread_mutex_unlock(&cpuMonitor.lock);
+    // while(1){
+    //     int flag=1;
+    //     py::object result = math.attr("build_predict_model")();
+    //     if (py::isinstance<py::list>(result)) {  // 检查是否为Python列表
+    //         auto vec = py::cast<std::vector<double>>(result);  // 转换为std::vector<int>
+    //         for (double value : vec) {
+    //             // std::cout << value << std::endl;  // 遍历并打印每个元素
+    //             if(value>5){
+    //                 flag=0;
+    //                 break;
+    //             }
+    //         }
+    //     } else {
+    //         std::cerr << "Result is not a list." << std::endl;
+    //     }
+    //     if(flag==1){
+    //         pthread_mutex_lock(&cpuMonitor.lock);
+    //         cpuMonitor.count=1;
+    //         pthread_mutex_unlock(&cpuMonitor.lock);
 
-        }
-        sleep(60);
-    }
+    //     }
+    //     sleep(60);
+    // }
     
 }
 int main(int argc, char ** argv) {
     clearFile("application.log");
     //coolling：定时预测
-    std::thread t(monitorUse);
+    // std::thread t(monitorUse);
     
     gpt_params params;//定义了gpt_params结构体来存储命令行参数
     g_params = &params;
@@ -1016,44 +1016,44 @@ int main(int argc, char ** argv) {
                         break;
                     } else if (ret == 0) {
                         if(buffer.length()==0){
-                            pthread_mutex_lock(&cpuMonitor.lock);
-                            if(cpuMonitor.count==1&&n_past>0){//可以进行优化
-                                std::cout << "wait for suoju......" << std::endl;
-                                py::object result = math.attr("suoju")(1);
-                                // 将py::object转换为std::string
-                                auto prompt = py::cast<std::string>(result);
+                            // pthread_mutex_lock(&cpuMonitor.lock);
+                            // if(cpuMonitor.count==1&&n_past>0){//可以进行优化
+                            //     std::cout << "wait for suoju......" << std::endl;
+                            //     py::object result = math.attr("suoju")(1);
+                            //     // 将py::object转换为std::string
+                            //     auto prompt = py::cast<std::string>(result);
 
-                                // 打印C++字符串变量
-                                // std::cout << "suoju result:"<<prompt << std::endl;
+                            //     // 打印C++字符串变量
+                            //     // std::cout << "suoju result:"<<prompt << std::endl;
 
-                                deleteKV(ctx);
-                                std::cout << "delete kv ok" << std::endl;
-                                //根据是否是对话模式、是否启用聊天模板以及用户提示是否为空，来决定是否格式化系统提示
+                            //     deleteKV(ctx);
+                            //     std::cout << "delete kv ok" << std::endl;
+                            //     //根据是否是对话模式、是否启用聊天模板以及用户提示是否为空，来决定是否格式化系统提示
                                 
                         
-                                n_past             = 0;//这个变量表示到目前为止已经处理过的输入标记的数量
-                                n_remain           = params.n_predict;//这个变量表示剩余需要生成的标记数量
-                                n_consumed         = 0;
-                                n_session_consumed = 0;
-                                n_past_guidance    = 0;
-                                input_tokens.clear();
-                                output_tokens.clear();
-                                output_ss.str("");
-                                assistant_ss.str("");
-                                embd.clear();
-                                embd_guidance.clear();
-                                antiprompt_ids.clear();
+                            //     n_past             = 0;//这个变量表示到目前为止已经处理过的输入标记的数量
+                            //     n_remain           = params.n_predict;//这个变量表示剩余需要生成的标记数量
+                            //     n_consumed         = 0;
+                            //     n_session_consumed = 0;
+                            //     n_past_guidance    = 0;
+                            //     input_tokens.clear();
+                            //     output_tokens.clear();
+                            //     output_ss.str("");
+                            //     assistant_ss.str("");
+                            //     embd.clear();
+                            //     embd_guidance.clear();
+                            //     antiprompt_ids.clear();
                             
-                                embd_inp = ::llama_tokenize(ctx, prompt, true, true);
-                                cpuMonitor.count=0;
-                                std::cout << "add new kv......" << std::endl;
-                                pthread_mutex_unlock(&cpuMonitor.lock);
-                                flag1=1;
-                                break;
+                            //     embd_inp = ::llama_tokenize(ctx, prompt, true, true);
+                            //     cpuMonitor.count=0;
+                            //     std::cout << "add new kv......" << std::endl;
+                            //     pthread_mutex_unlock(&cpuMonitor.lock);
+                            //     flag1=1;
+                            //     break;
                                 
 
-                            }
-                            pthread_mutex_unlock(&cpuMonitor.lock);
+                            // }
+                            // pthread_mutex_unlock(&cpuMonitor.lock);
 
                         }
 

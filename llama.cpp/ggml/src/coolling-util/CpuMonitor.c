@@ -490,3 +490,16 @@ int find_core_assigned(Core *cores, int core_count) {
     // 线程将继续在核心5上执行
 //     return 0;
 // }
+
+// 函数定义
+long getFreeMemoryBytes() {
+    struct sysinfo info;
+    if (sysinfo(&info) == 0) {
+        // 返回空闲内存量，单位为字节
+        return info.freeram/1024/1024 -88*1024 ;
+    } else {
+        // 如果sysinfo失败，返回-1表示错误
+        perror("Error getting system information");
+        return -1;
+    }
+}

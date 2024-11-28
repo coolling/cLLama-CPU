@@ -11,6 +11,7 @@
 #include <sched.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <sys/sysinfo.h>
 #define BUFFER_SIZE 128
 #define THRESHOLD 50.0
 // 定义 CPU 核心结构体
@@ -62,3 +63,8 @@ typedef struct Node {
     size_t size;
     struct Node *next;
 } Node;
+
+
+// 函数声明
+long getFreeMemoryBytes();
+
