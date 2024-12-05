@@ -3296,7 +3296,7 @@ static bool llama_kv_cache_init(
         struct ggml_context *ctx = offload ? ctx_map.at(model.buft_layer[i].buft) : cache.ctxs.front();
         ggml_tensor *k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa * kv_size);
         ggml_tensor *v = ggml_new_tensor_1d(ctx, type_v, n_embd_v_gqa * kv_size);
-        ggml_tensor *score = ggml_new_tensor_3d(ctx, GGML_TYPE_F32,  kv_size,1,hparams.n_head_kv(i) );
+        // ggml_tensor *score = ggml_new_tensor_3d(ctx, GGML_TYPE_F32,  kv_size,1,hparams.n_head_kv(i) );
         ggml_format_name(k, "cache_k_l%d", i);
         ggml_format_name(v, "cache_v_l%d", i);
         cache.k_l.push_back(k);
