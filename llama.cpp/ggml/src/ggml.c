@@ -70,14 +70,7 @@ typedef atomic_int atomic_bool;
 typedef atomic_int atomic_flag;
 
 #define ATOMIC_FLAG_INIT 0
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-// #include <unistd.h>
-#include <time.h>
-#include <sched.h>
-#define BUFFER_SIZE 128
-#define THRESHOLD 90.0
+
 // 实现的一组原子操作函数。
 // 原子操作是指在多线程环境中，当一个操作在执行时，不会被其他线程中断，可以保证操作的完整性和数据的一致性。
 static void atomic_store(atomic_int * ptr, LONG val) {
@@ -18976,7 +18969,7 @@ void print_cores_and_shared_groups() {
 #include <sys/mman.h>
 #include <sys/stat.h>
 FILE * fout;
-void *mapped;//用于文件映射
+// void *mapped;//用于文件映射
 
 
 
@@ -19000,7 +18993,7 @@ pthread_cond_t read_over = PTHREAD_COND_INITIALIZER;    // 读取完的条件变
 int over_count=0; //判断是否读取完 当over_count==NUM_THREADS 读取完了 和条件变量一起使用
 
 
-#define NUM_THREADS 6//读取的线程数
+
 size_t q_max=1; //消费队列大小
 int count = 0;  // 缓冲区当前数据项的数量
 
@@ -19039,6 +19032,7 @@ void* copyMemory(const void* src, size_t size) {
 // cool：多线程读取数据
 
 void read_data(void *args) {
+    
     thread_args *data = (thread_args *)args;
     // 定位到文件的指定位置
     load_time12[data->thread_id] = ggml_time_us();
@@ -19048,6 +19042,7 @@ void read_data(void *args) {
     // memcpy(data->buffer, mapped + data->offset, data->size);
     load_time13[data->thread_id] = ggml_time_us();
     load_time11[data->thread_id] += load_time13[data->thread_id] - load_time12[data->thread_id];
+   
 }
 #include <stdio.h>
 #include <string.h>
@@ -19111,6 +19106,7 @@ void *producer_func(void *arg) {
     int layer_count=0; //即将读取几层
     
     while(1){
+      
         load=0;//加载数据时间置为0
         for(int i=0;i<NUM_THREADS;i++){
             load_time11[i]=0;//加载数据时间置为0
@@ -19126,18 +19122,23 @@ void *producer_func(void *arg) {
                     // 生成数据项
                     name = ggml_get_name(src);
                     offset = (intptr_t)(uintptr_t)src->extra;
+                 
                     size = ggml_nbytes(src); 
                     //当前层张量还没有统计完的话接着统计
                     if(strcmp(last_name, "") == 0||(strstr(last_name, "blk")== NULL&&strstr(name, "blk")== NULL)||(strstr(last_name, "blk")!= NULL&&strstr(name, "blk")!= NULL&&compare_blk_content(last_name,name))){
+                       
                         if(strcmp(last_name, "") == 0){
                             offsetl=offset;
                             offsetr=offset+size;
+                            // printf("offset1:%ld\n",offset);
                         }else{
                             offsetl=fmin(offsetl,offset);
                             offsetr=fmax(offsetr,offset+size);
+                            
                         }
                         strcpy(last_name, name);
                     }else{
+                        
                         flag++;
                         //当前层统计完了，可以加载数据
                         layer_count++;//目前累计了一层
@@ -19156,9 +19157,9 @@ void *producer_func(void *arg) {
                         }
                         
                         //加载数据
-                      
+                        
                         if(isValueInList(stay_head,offsetl)!=NULL){
-                            printf("already load\n");
+                            
                             offsetl=offset;
                             offsetr=offset+size;
                             layer_count=0;
@@ -19208,7 +19209,7 @@ void *producer_func(void *arg) {
                         }
                         pthread_mutex_unlock(&mutex);
 
-                        
+                      
                         size_t per_thread_size = load_size / NUM_THREADS;
                         size_t remaining_data = load_size % NUM_THREADS;
                         #pragma omp parallel for num_threads(NUM_THREADS) default(none) shared(data, offsetl, per_thread_size, remaining_data, fouts)
@@ -19224,13 +19225,14 @@ void *producer_func(void *arg) {
 
                         // 在所有线程执行完毕后进行同步
                         #pragma omp barrier
+                       
 
                         // over_count=0;//将变量重新设置为0
                         size_t load2=ggml_time_us();
 
                         //插入数据
                         pthread_mutex_unlock(&thread_mutex);
-                            strcpy(last_name, name);
+                        strcpy(last_name, name);
                         
                         // 获取互斥锁
                         pthread_mutex_lock(&mutex);
@@ -19248,8 +19250,8 @@ void *producer_func(void *arg) {
                         new_node->size=offsetr-offsetl;
                         new_node->next = NULL;
                         //前两层不固定在内存，防止发生推理线程把它释放，而加载线程已经跳过前面这些层检查的bug
-                        if(!(flag==1||flag==2)&&isValueInList(stay_head,offsetl)==NULL&&freeMem>new_node->size/1024/1024+512){
-                            printf("add in free\n");
+                        if(!(flag==1)&&isValueInList(stay_head,offsetl)==NULL&&freeMem>new_node->size/1024/1024+RESERVE_MEM){
+                            // printf("add in free\n");
                             if (stay_tail == NULL) { // 队列为空时，新节点既是头也是尾
                                 stay_head = stay_tail =new_node;
                             } else {
@@ -19292,12 +19294,12 @@ void *producer_func(void *arg) {
             }
         
         }
-
+  
         //加载数据
         if(isValueInList(stay_head,offsetl)!=NULL){
             layer_count=0;
             strcpy(last_name, "");
-            printf("already load\n");
+            // printf("already load\n");
             // coolling:print load time
             printf("all load_time1: %.2f s\n",load / 1000000.0f);
             for(int i=0;i<NUM_THREADS;i++){
@@ -19378,7 +19380,7 @@ void *producer_func(void *arg) {
         
         // 等待直到缓冲区有空间
         while (count == q_max) {
-            // printf("Producer: Buffer is full. Waiting...\n");
+            printf("Producer: Buffer is full. Waiting...\n");
             pthread_cond_wait(&empty, &mutex);
         }
         
@@ -19388,8 +19390,8 @@ void *producer_func(void *arg) {
         new_node->next = NULL;
         new_node->offset=offsetl;
         new_node->size=offsetr-offsetl;
-        if(isValueInList(stay_head,offsetl)==NULL&&freeMem>new_node->size/1024/1024+512){
-            printf("add in free\n");
+        if(isValueInList(stay_head,offsetl)==NULL&&freeMem>new_node->size/1024/1024+RESERVE_MEM){
+            // printf("add in free\n");
             if (stay_tail == NULL) { // 队列为空时，新节点既是头也是尾
                 stay_head = stay_tail =new_node;
             } else {
@@ -19410,7 +19412,7 @@ void *producer_func(void *arg) {
         }
 
         
-        // printf("Producer: Produced data: %d ;size : %ld\n", data,offsetr-offsetl);
+        // printf("Producer: Produced data: %d;offset:%ld;size:%ld\n", data,offsetl,offsetr-offsetl);
         
         // 唤醒等待的消费者线程
         pthread_cond_signal(&full);
@@ -19430,7 +19432,22 @@ void *producer_func(void *arg) {
         
     
        
-        
+        //监测空闲内存进行释放
+        while(freeMem<RESERVE_MEM &&stay_head!=NULL){
+            // printf("out freemen\n");
+            // pthread_mutex_lock(&stayCounter.lock);
+            Node* t = stay_head;
+            stay_head = stay_head->next;
+            if (stay_head == NULL) {
+                stay_tail = NULL;
+            }
+            freeMem+=t->size/1024/1024;
+            // pthread_mutex_unlock(&stayCounter.lock);
+            free(t->data);
+            free(t);
+
+        }
+    
         
     }
     
@@ -19450,6 +19467,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
     pthread_mutex_lock(&threadCounter3.lock);
     set_numa_thread_affinity(state->ith);
     int assigned_core=find_core_assigned(cores,allCores);
+    // printf("assigned_core:%d\n",assigned_core);
     if(assigned_core==-1){
         bind_thread_to_core(state->ith,cores);
     }else{
@@ -19475,14 +19493,14 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         
         //确认数据准备好了
         if (state->ith == 0) { // 
-            
+            t_main_start1 = ggml_time_us();
             for(int i=0;i<GGML_MAX_SRC;i++){
                 struct ggml_tensor * src = node->src[i];
                 // const auto * weight = get_weight(ggml_get_name(src0));
                 if(src!=NULL&&src->extra!=0){
                     
                     off_t offset= (intptr_t)(uintptr_t)src->extra;
-                    
+                   
                     size_t size= ggml_nbytes(src); 
                     if(temp!=NULL&&temp->offset<=offset&&offset+size<=temp->offset+temp->size){  
                         src->data=temp->data+offset-temp->offset;//已经加载
@@ -19509,19 +19527,13 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
                             // 获取互斥锁
                             pthread_mutex_lock(&mutex);
                             // 等待直到缓冲区有数据
-                            if (state->ith == 0) { //
-                                t_main_start1 = ggml_time_us();
-                            }
+                            
                             
                             while ((head == NULL||!(head->offset<=offset&&offset<head->offset+head->size))&&isValueInList(stay_head,offset)==NULL) {
                                 // printf("Consumer: Buffer is empty. Waiting...\n");
                                 pthread_cond_wait(&full, &mutex);
                             }
-                            if (state->ith == 0) { 
-                                size_t t_main_end = ggml_time_us();
-                                // printf("wait time: %.2f s\n",(t_main_end - t_main_start1) / 1000000.0f);
-                                wait_time1+=(t_main_end - t_main_start1) ;
-                            }
+                            
                             
                             if(temp!=NULL&&temp_in_stay==false){
                                 if (free_tail == NULL) { // 队列为空时，新节点既是头也是尾
@@ -19565,6 +19577,9 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
 
                 }
             }
+            size_t t_main_end = ggml_time_us();
+            // printf("wait time: %.2f s\n",(t_main_end - t_main_start1) / 1000000.0f);
+            wait_time1+=(t_main_end - t_main_start1) ;
             
         }
         
@@ -19581,11 +19596,10 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         int all=state->shared->n_threads;
        
         ggml_barrier(state->shared);
-        if (state->ith == 0) { // 
-        // printf("eat over\n");
+        if (state->ith == 0) { 
             size_t t_main_end = ggml_time_us();
-                        // printf("speed: %.2f s\n",(t_main_end - t_main_start2) / 1000000.0f);
-                        wait_time2+=(t_main_end - t_main_start2) ;
+                       
+            wait_time2+=(t_main_end - t_main_start2) ;
         }
         
         threadCounter2.count=0;
@@ -19663,29 +19677,14 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         params.nth= nowThreadCount;
         if (state->ith == 0) { // 
             size_t t_main_end = ggml_time_us();
-                        // printf("speed: %.2f s\n",(t_main_end - t_main_start3) / 1000000.0f);
-                        wait_time3+=(t_main_end - t_main_start3) ;
+                        
+            wait_time3+=(t_main_end - t_main_start3) ;
         }
         
 
         
     }
-    if(state->ith == 0){
-        while(freeMem<512 &&stay_head!=NULL){
-            printf("out freemen\n");
-            // pthread_mutex_lock(&stayCounter.lock);
-            Node* t = stay_head;
-            stay_head = stay_head->next;
-            if (stay_head == NULL) {
-                stay_tail = NULL;
-            }
-            freeMem+=t->size/1024/1024;
-            // pthread_mutex_unlock(&stayCounter.lock);
-            free(t->data);
-            free(t);
-
-        }
-    }
+    
     clear_numa_thread_affinity();
     clear_thread_affinity(pthread_self());
     update_last_assigned_time(cores,assigned_core);
@@ -19697,20 +19696,20 @@ void* monitor(void* arg) {
     while (1) { 
         idleCores = getIdleCoresCount(cores,allCores);
         freeMem = getFreeMemoryBytes();
+        // printf("idleCores:%d\n",abc);
         pthread_mutex_lock(&threadCounter.lock);
-        if (idleCores < 5 && nowThreadCount > 1) {
+        if (idleCores < RESERVE_CORES && nowThreadCount > 1) {
             exits =1;
             adds=0;
-        } else if (idleCores > 10) {
+        } else if (idleCores > RESERVE_CORES) {
             exits=0;
-            adds = idleCores-10;
+            adds = idleCores-RESERVE_CORES;
         }else{
             exits=0;
             adds=0;
         }
         pthread_mutex_unlock(&threadCounter.lock);
-        // printf("\nfreemem:%d  idleCores:%d\n",freeMem,idleCores);
-        
+
         
         sleep(0.3);
        
@@ -19736,15 +19735,14 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         
         nowThreadCount = getIdleCoresCount(cores,allCores);//设置第一次推理的核心数
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
-        nowThreadCount=4;
+        // nowThreadCount=4;
         
         // print_cores_and_shared_groups();
         //coolling-todo：改成从上层传下来的文件名
-        const char *filename ="/mnt/pmem0/cyl/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf";
-        // const char *filename ="/mnt/nvme1n1/cyl/vicuna-7B-v1.5-F16.gguf";//
-       
-        // const char *filename ="/home/chenyunling/cLLama-CPU/llama.cpp/vicuna-7B-v1.5-F16.gguf";
+        const char *filename =FILENAME;
+
         fout = ggml_fopen(filename, "r");//打开文件，用于后面加载权重
+        // printf("num:%d\n",NUM_THREADS);
         for(int i=0;i<NUM_THREADS;i++){
             fouts[i] = ggml_fopen(filename, "r");
         }
@@ -19767,22 +19765,16 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
             return EXIT_FAILURE;
         }
         // 映射文件
-        mapped = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-        if (mapped == MAP_FAILED) {
-            perror("mmap");
-            fclose(fout);
-            return EXIT_FAILURE;
-        }
-        pThreadPool->AddWorkUnlimit(pThreadPool, producer_func, NULL);//生产者线程
-        // pthread_t producer_thread; // 用于存储生产者线程的ID
-
-        // // 创建生产者线程
-        // if (pthread_create(&producer_thread, NULL, producer_func, NULL) != 0) {
-        //     perror("Failed to create producer thread");
-        //     return 1;
+        // mapped = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        // if (mapped == MAP_FAILED) {
+        //     perror("mmap");
+        //     fclose(fout);
+        //     return EXIT_FAILURE;
         // }
+        pThreadPool->AddWorkUnlimit(pThreadPool, producer_func, NULL);//生产者线程
+      
     }
-    size_t all1=ggml_time_us();
+    
     struct ggml_compute_state_shared state_shared = {
         /*.cgraph                  =*/ cgraph,
         /*.cgraph_plan             =*/ cplan,
@@ -19804,16 +19796,17 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
             .start_node = 0,
         };
     }
+    size_t all1=ggml_time_us();
     for (int j = 1; j < nowThreadCount; ++j) {
         pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
     }
     ggml_graph_compute_thread(&workers[0]);
     size_t all2=ggml_time_us();
     // coolling:print wait time
-    printf("all wait_time1: %.2f s\n",wait_time1 / 1000000.0f);
-    printf("all wait_time2: %.2f s\n",wait_time2 / 1000000.0f);
-    printf("all wait_time3: %.2f s\n",wait_time3 / 1000000.0f);
-    printf("all time: %.2f s\n",(all2-all1)/ 1000000.0f);
+    printf("all wait_time1: %.4f s\n",wait_time1 / 1000000.0f);
+    printf("all wait_time2: %.4f s\n",wait_time2 / 1000000.0f);
+    printf("all wait_time3: %.4f s\n",wait_time3 / 1000000.0f);
+    printf("all time: %.4f s\n",(all2-all1)/ 1000000.0f);
     return state_shared.ec;
 }
 

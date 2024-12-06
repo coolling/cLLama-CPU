@@ -2,46 +2,143 @@
 
 
 !!!!hardware_concurrency20
-20 1
- <|im_start|>system
-Hello,world!<|im_end|>
+12 1
+num:4
+all load_time1: 0.36 s
+all load_time11 0: 0.32 s
+all load_time11 1: 0.32 s
+all load_time11 2: 0.32 s
+all load_time11 3: 0.32 s
+all wait_time1: 0.3103 s
+all wait_time2: 0.0419 s
+all wait_time3: 0.0113 s
+all time: 0.3671 s
+ hiall load_time1: 0.35 s
+all load_time11 0: 0.31 s
+all load_time11 1: 0.31 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.31 s
+all wait_time1: 0.2740 s
+all wait_time2: 0.0426 s
+all wait_time3: 0.0113 s
+all time: 0.3411 s
+.all load_time1: 0.37 s
+all load_time11 0: 0.31 s
+all load_time11 1: 0.30 s
+all load_time11 2: 0.29 s
+all load_time11 3: 0.31 s
+all wait_time1: 0.2977 s
+all wait_time2: 0.0420 s
+all wait_time3: 0.0108 s
+all time: 0.3636 s
 
-kv used:22
-1.47983
-3.05987
-1.52203
-1.5249
-2.08539
-<|im_end|>
+all load_time1: 0.35 s
+all load_time11 0: 0.31 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.31 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2881 s
+all wait_time2: 0.0445 s
+all wait_time3: 0.0104 s
+all time: 0.3481 s
 
-kv used:66
-wait for suoju......
-suoju result:system - <|im_start|>system Hello,world!<|im_end|> user - hello,what <|im_end|> <|im_start|>assistant assistant - <|im_start|>assistant <
-delete kv ok
-add new kv......
- system - <|im_start|>system Hello,world!<|im_end|> user - hello,what <|im_end|> <|im_start|>assistant assistant - <|im_start|>assistant <
-kv used:55
-1.47983
-3.05987
-1.52203
-1.5249
-2.08539
-<|im_1.47983
-3.05987
-1.52203
-1.5249
-2.08539
-end|>user
-
-kv used:95
-wait for suoju......
-suoju result:system - <|im_start|>system Hello,world!<|im_end|> user - hello,what is <|im_end|> <|im_start|>assistant assistant - <|im_start|>assistant < user - bye!
-delete kv ok
-add new kv......
- system - <|im_start|>system Hello,world!<|im_end|> user - hello,what is <|im_end|> <|im_start|>assistant assistant - <|im_start|>assistant < user - bye!
-kv used:61
-1.47983
-3.05987
-1.52203
-1.5249
-2.08539
+all load_time1: 0.34 s
+all load_time11 0: 0.29 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.31 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2667 s
+all wait_time2: 0.0469 s
+all wait_time3: 0.0103 s
+all time: 0.3410 s
+Aall load_time1: 0.33 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.30 s
+all load_time11 3: 0.29 s
+all wait_time1: 0.2624 s
+all wait_time2: 0.0456 s
+all wait_time3: 0.0104 s
+all time: 0.3261 s
+:all load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2556 s
+all wait_time2: 0.0439 s
+all wait_time3: 0.0094 s
+all time: 0.3117 s
+ Iall load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2556 s
+all wait_time2: 0.0439 s
+all wait_time3: 0.0095 s
+all time: 0.3121 s
+'all load_time1: 0.32 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.29 s
+all wait_time1: 0.2584 s
+all wait_time2: 0.0441 s
+all wait_time3: 0.0096 s
+all time: 0.3150 s
+mall load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2547 s
+all wait_time2: 0.0458 s
+all wait_time3: 0.0089 s
+all time: 0.3121 s
+ notall load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2541 s
+all wait_time2: 0.0458 s
+all wait_time3: 0.0088 s
+all time: 0.3115 s
+ sureall load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2437 s
+all wait_time2: 0.0458 s
+all wait_time3: 0.0089 s
+all time: 0.3117 s
+ whatall load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2542 s
+all wait_time2: 0.0459 s
+all wait_time3: 0.0089 s
+all time: 0.3115 s
+ youall load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2449 s
+all wait_time2: 0.0457 s
+all wait_time3: 0.0088 s
+all time: 0.3116 s
+'all load_time1: 0.31 s
+all load_time11 0: 0.28 s
+all load_time11 1: 0.28 s
+all load_time11 2: 0.28 s
+all load_time11 3: 0.28 s
+all wait_time1: 0.2544 s
+all wait_time2: 0.0457 s
+all wait_time3: 0.0088 s
+all time: 0.3116 s
+re

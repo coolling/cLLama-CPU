@@ -13,7 +13,8 @@
 #include <sys/types.h>
 #include <sys/sysinfo.h>
 #define BUFFER_SIZE 128
-#define THRESHOLD 50.0
+
+
 // 定义 CPU 核心结构体
 typedef struct Core {
     int id;
@@ -66,5 +67,16 @@ typedef struct Node {
 
 
 // 函数声明
-long getFreeMemoryBytes();
+int getFreeMemoryBytes();
 
+
+extern  char* FILENAME ; //加载的模型地址
+
+
+#define  NUM_THREADS 4 //读取的线程数
+extern int NUM_CORES ; //读取的线程数
+extern int RESERVE_CORES  ;//预留的核心数
+extern int RESERVE_MEM ;//预留的内存数
+extern float THRESHOLD  ;//空闲核心的阈值
+extern char* CURRENT_MEM_FILE ;
+extern char* MAX_MEM_FILE;

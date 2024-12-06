@@ -7,11 +7,18 @@
 #include <unistd.h>
 #include <time.h>
 #include <sched.h>
-#define BUFFER_SIZE 128
-#define THRESHOLD 99.0
 
+int THREADS=4; //读取的线程数
+int NUM_CORES=12; //读取的线程数
+int RESERVE_CORES= 2 ;//预留的核心数
+int RESERVE_MEM =512 ;//预留的内存数
+float THRESHOLD= 99.0 ;//空闲核心的阈值
+char* CURRENT_MEM_FILE= "/sys/fs/cgroup/my_cgroup/memory.current";
+char* MAX_MEM_FILE ="/sys/fs/cgroup/my_cgroup/memory.max";
+char* FILENAME = "/mnt/pmem0/cyl/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf"; //加载的模型地址
 int getAllCores(){
-    return  sysconf(_SC_NPROCESSORS_ONLN);
+    return NUM_CORES;
+    // return  sysconf(_SC_NPROCESSORS_ONLN);
 }
 int countIdleCores(const char *output,Core *cores,int size) {
     int idleCount = 0;
@@ -24,27 +31,35 @@ int countIdleCores(const char *output,Core *cores,int size) {
     int flag=0;
     int count=0;
     while (sscanf(ptr, "%[^\n]\n", line) != EOF) {
+        
         ptr += strlen(line) + 1; // 移动到下一行
         // 查找包含 "PM" 的行
-        if (strstr(line, "PM") != NULL ||strstr(line, "AM") != NULL) {
+        if (strstr(line, "PM") != NULL ||strstr(line, "AM") != NULL||strstr(line, "all") != NULL||flag==1) {
             if(flag==0){
+                
                 flag=1;
                 continue;
             }
+          
        
-            // 使用 sscanf 提取空闲率
-            token = strtok(line, " ");
-            for (int i = 0; i < 12; i++) { // 跳过前 12 个字段
+            
+            char *token = strtok(line, " ");
+            for (int i = 0; i < 10; i++) { // 跳过前 11 个字段
                 token = strtok(NULL, " ");
+            
             }
+            
             if (token != NULL) {
+                token = strtok(NULL, " ");
                 idleRate = atof(token);
+                
                 if (idleRate > THRESHOLD) {
+                    
                     if(!cores[count].isUsed){
                         idleCount++;
 
                     }
-                    
+                
                     cores[count].isIdle=true;
                 }else{
                     cores[count].isIdle=false;
@@ -52,6 +67,9 @@ int countIdleCores(const char *output,Core *cores,int size) {
                 }
             }
             count++;
+            if(count>=NUM_CORES){
+                break;
+            }
         }
     }
 
@@ -126,7 +144,7 @@ void hexToBinary(const char *hexStr, char *binaryStr) {
 void countOnesIndex(const char *binaryStr, int *indexArray, int *indexCount) {
     int length = strlen(binaryStr);
     for (int i = length - 1; i >= 0; i--) {
-        if (binaryStr[i] == '1') {
+        if (binaryStr[i] == '1'&&length - i - 1<getAllCores()) {
             indexArray[(*indexCount)++] = length - i - 1;
         }
     }
@@ -301,22 +319,7 @@ void init_shared_groups(int size, SharedGroup **shared_groups_level2,int * count
         memcpy((*shared_groups_level3)[i].cores, temp_shared_groups_level3[i].cores, temp_shared_groups_level3[i].count * sizeof(int));
     }
 
-    // // 打印结果
-    // for (int j = 0; j < count2; j++) {
-    //     printf("Level 2 Group %d: Cores ", j);
-    //     for (int z = 0; z < (*shared_groups_level2)[j].count; z++) {
-    //         printf("%d ", (*shared_groups_level2)[j].cores[z]);
-    //     }
-    //     printf("\n");
-    // }
-
-    // for (int j = 0; j < count3; j++) {
-    //     printf("Level 3 Group %d: Cores ", j);
-    //     for (int z = 0; z < (*shared_groups_level3)[j].count; z++) {
-    //         printf("%d ", (*shared_groups_level3)[j].cores[z]);
-    //     }
-    //     printf("\n");
-    // }
+   
 
     // 释放临时内存
     for (int i = 0; i < count2; i++) {
@@ -418,81 +421,39 @@ int find_core_assigned(Core *cores, int core_count) {
 }
 
 
-// 函数用于将当前线程绑定到指定的核心
-// int bind_thread_to_core(int core_id) {
-//     cpu_set_t *cpuset;
-//     size_t setsize;
-
-//     // 获取系统中可用的 CPU 核心数
-//     int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
-//     printf("cpu count:%d\n",ncpu);
-//     if (ncpu < 0) {
-//         perror("Error getting the number of online processors");
-//         return -1;
-//     }
-
-//     // 获取分配给 cpu_set_t 的大小
-//     setsize = CPU_ALLOC_SIZE(ncpu);
-//     cpuset = CPU_ALLOC(ncpu);
-//     if (cpuset == NULL) {
-//         perror("Error allocating CPU set");
-//         return -1;
-//     }
-
-//     // 初始化 CPU 集合并设置指定的核心
-//     CPU_ZERO_S(setsize, cpuset);
-//     if (CPU_SET_S(core_id, setsize, cpuset) == 0) {
-//         perror("Error setting CPU");
-//         CPU_FREE(cpuset);
-//         return -1;
-//     }
-//     // 将当前线程绑定到指定的核心
-//     int result = pthread_setaffinity_np(pthread_self(), setsize, cpuset);
-//     if (result != 0) {
-//         fprintf(stderr, "Error binding thread to core %d: %s\n", core_id, strerror(result));
-//         CPU_FREE(cpuset);
-//         return -1;
-//     }
-
-//     // 打印绑定结果
-//     printf("Thread bound to core %d\n", core_id);
-
-//     // 释放CPU集合
-//     CPU_FREE(cpuset);
-//     return 0;
-// }
-// 查看空闲核心
-// int main() {
-//     clock_t start, end;
-//     start = clock();
-//     getIdleCoresCount();
-//     end = clock();
-//     double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-//     printf("CPU time used: %f seconds\n", cpu_time_used);
-//     return EXIT_SUCCESS;
-// }
-
-// int main() {
-    
-// 线程绑定核心
-//     printf("Current thread is running on CPU core %d\n", sched_getcpu());
-//     int core_id = 5; // 假设我们要将线程绑定到核心5
-//     if (bind_thread_to_core(core_id) != 0) {
-//         fprintf(stderr, "Failed to bind thread to core %d\n", core_id);
-//         return -1;
-//     }
-//     int cpu_id = sched_getcpu();
-//     if (cpu_id < 0) {
-//         perror("sched_getcpu failed");
-//         return -1;
-//     }
-//     printf("Current thread is running on CPU core %d\n", sched_getcpu());
-    // 线程将继续在核心5上执行
-//     return 0;
-// }
-
+// 函数用于读取文件内容并返回内存大小（单位：字节）
+long long read_memory_file(const char *file_path) {
+    long long memory_size = 0;
+    FILE *file = fopen(file_path, "r");
+    if (file != NULL) {
+        if (fscanf(file, "%lld", &memory_size) == 1) {
+            // 成功读取
+        } else {
+            perror("Error reading memory file");
+        }
+        fclose(file);
+    } else {
+        perror("Error opening memory file");
+    }
+    return memory_size;
+}
 // 函数定义
-long getFreeMemoryBytes() {
+int getFreeMemoryBytes() {
+    return 0;
+    long long current_memory = read_memory_file("/sys/fs/cgroup/my_cgroup/memory.current");
+    long long max_memory = read_memory_file("/sys/fs/cgroup/my_cgroup/memory.max");
+
+    if (current_memory < 0 || max_memory < 0) {
+        printf("Failed to read memory values\n");
+        return EXIT_FAILURE;
+    }
+
+    // 计算剩余内存（单位：字节）
+    long long remaining_memory_bytes = max_memory - current_memory;
+    int remaining_memory_mb = remaining_memory_bytes / (1024 * 1024);
+    return remaining_memory_mb;
+}
+long getFreeMemoryBytes_fromsys() {
     struct sysinfo info;
     if (sysinfo(&info) == 0) {
         // 返回空闲内存量，单位为字节
