@@ -19250,7 +19250,7 @@ void *producer_func(void *arg) {
                         new_node->size=offsetr-offsetl;
                         new_node->next = NULL;
                         //前两层不固定在内存，防止发生推理线程把它释放，而加载线程已经跳过前面这些层检查的bug
-                        if(!(flag==1)&&isValueInList(stay_head,offsetl)==NULL&&freeMem>new_node->size/1024/1024+RESERVE_MEM){
+                        if(isValueInList(stay_head,offsetl)==NULL&&freeMem>new_node->size/1024/1024+RESERVE_MEM){
                             // printf("add in free\n");
                             if (stay_tail == NULL) { // 队列为空时，新节点既是头也是尾
                                 stay_head = stay_tail =new_node;
@@ -19301,11 +19301,11 @@ void *producer_func(void *arg) {
             strcpy(last_name, "");
             // printf("already load\n");
             // coolling:print load time
-            printf("all load_time1: %.2f s\n",load / 1000000.0f);
-            for(int i=0;i<NUM_THREADS;i++){
-                printf("all load_time11 %d: %.2f s\n",i,load_time11[i] / 1000000.0f);
+            // printf("all load_time1: %.2f s\n",load / 1000000.0f);
+            // for(int i=0;i<NUM_THREADS;i++){
+            //     printf("all load_time11 %d: %.2f s\n",i,load_time11[i] / 1000000.0f);
 
-            }
+            // }
             continue;
         }
         Node *new_node;
@@ -19380,7 +19380,7 @@ void *producer_func(void *arg) {
         
         // 等待直到缓冲区有空间
         while (count == q_max) {
-            printf("Producer: Buffer is full. Waiting...\n");
+            // printf("Producer: Buffer is full. Waiting...\n");
             pthread_cond_wait(&empty, &mutex);
         }
         
@@ -19424,11 +19424,11 @@ void *producer_func(void *arg) {
 
         layer_count=0;
         // coolling:print load time
-        printf("all load_time1: %.2f s\n",load / 1000000.0f);
-        for(int i=0;i<NUM_THREADS;i++){
-            printf("all load_time11 %d: %.2f s\n",i,load_time11[i] / 1000000.0f);
+        // printf("all load_time1: %.2f s\n",load / 1000000.0f);
+        // for(int i=0;i<NUM_THREADS;i++){
+        //     printf("all load_time11 %d: %.2f s\n",i,load_time11[i] / 1000000.0f);
 
-        }
+        // }
         
     
        
@@ -19620,7 +19620,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
     
             // printf("Thread:%d,all:%d;node:%d\n",state->ith,all,node_n);
             pthread_mutex_lock(&threadCounter.lock);
-            if (exits>0&& nowThreadCount > 4) {
+            if (exits>0&& nowThreadCount > exits) {
                 
                 exits--;
                 nowThreadCount--;
@@ -19696,7 +19696,7 @@ void* monitor(void* arg) {
     while (1) { 
         idleCores = getIdleCoresCount(cores,allCores);
         freeMem = getFreeMemoryBytes();
-        // printf("idleCores:%d\n",abc);
+        // printf("idleCores:%d  CuCores:%d\n",idleCores,nowThreadCount);
         pthread_mutex_lock(&threadCounter.lock);
         if (idleCores < RESERVE_CORES && nowThreadCount > 1) {
             exits =1;
@@ -19803,10 +19803,10 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
     ggml_graph_compute_thread(&workers[0]);
     size_t all2=ggml_time_us();
     // coolling:print wait time
-    printf("all wait_time1: %.4f s\n",wait_time1 / 1000000.0f);
-    printf("all wait_time2: %.4f s\n",wait_time2 / 1000000.0f);
-    printf("all wait_time3: %.4f s\n",wait_time3 / 1000000.0f);
-    printf("all time: %.4f s\n",(all2-all1)/ 1000000.0f);
+    // printf("all wait_time1: %.4f s\n",wait_time1 / 1000000.0f);
+    // printf("all wait_time2: %.4f s\n",wait_time2 / 1000000.0f);
+    // printf("all wait_time3: %.4f s\n",wait_time3 / 1000000.0f);
+    // printf("all time: %.4f s\n",(all2-all1)/ 1000000.0f);
     return state_shared.ec;
 }
 

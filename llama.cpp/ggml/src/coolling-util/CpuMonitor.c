@@ -9,13 +9,13 @@
 #include <sched.h>
 
 int THREADS=4; //读取的线程数
-int NUM_CORES=12; //读取的线程数
+int NUM_CORES=12; //总核心数
 int RESERVE_CORES= 2 ;//预留的核心数
-int RESERVE_MEM =512 ;//预留的内存数
-float THRESHOLD= 99.0 ;//空闲核心的阈值
+int RESERVE_MEM =50 ;//预留的内存数
+float THRESHOLD= 90 ;//空闲核心的阈值
 char* CURRENT_MEM_FILE= "/sys/fs/cgroup/my_cgroup/memory.current";
 char* MAX_MEM_FILE ="/sys/fs/cgroup/my_cgroup/memory.max";
-char* FILENAME = "/mnt/pmem0/cyl/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf"; //加载的模型地址
+char* FILENAME = "/mnt/pmem/model/model/vicuna-7B-v1.5-F16.gguf"; //加载的模型地址
 int getAllCores(){
     return NUM_CORES;
     // return  sysconf(_SC_NPROCESSORS_ONLN);
@@ -44,8 +44,9 @@ int countIdleCores(const char *output,Core *cores,int size) {
        
             
             char *token = strtok(line, " ");
-            for (int i = 0; i < 10; i++) { // 跳过前 11 个字段
+            for (int i = 0; i < 11; i++) { // 跳过前 11 个字段
                 token = strtok(NULL, " ");
+                
             
             }
             
@@ -108,6 +109,7 @@ int getIdleCoresCount(Core * cores,int size){
     // printf("空闲核心的数量: %d\n", idleCores);
 
     free(mpstatOutput); // 释放内存
+    // print
     return idleCores;
 }
 
@@ -439,7 +441,7 @@ long long read_memory_file(const char *file_path) {
 }
 // 函数定义
 int getFreeMemoryBytes() {
-    return 0;
+    // return 0;
     long long current_memory = read_memory_file("/sys/fs/cgroup/my_cgroup/memory.current");
     long long max_memory = read_memory_file("/sys/fs/cgroup/my_cgroup/memory.max");
 

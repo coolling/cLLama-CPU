@@ -20,7 +20,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
+#include <limits> // 添加这一行来包含 std::numeric_limits
 #include <sys/select.h>
 #include <sys/time.h>
 #include <termios.h>
@@ -601,6 +601,8 @@ int main(int argc, char ** argv) {
     int n_consumed         = 0;
     int n_session_consumed = 0;
     int n_past_guidance    = 0;
+    int current_interactive_length=0;
+    int number=-1;
 
     std::vector<int>   input_tokens;  g_input_tokens  = &input_tokens;//分别存储输入和输出的标记
     std::vector<int>   output_tokens; g_output_tokens = &output_tokens;
@@ -935,10 +937,11 @@ int main(int argc, char ** argv) {
                     LOG("found antiprompt: %s\n", last_output.c_str());
                 }
             }
-
+            current_interactive_length+=1;
             // deal with end of generation tokens in interactive mode
-            if (llama_token_is_eog(model, llama_sampling_last(ctx_sampling))) {
+            if ((number==-1&&llama_token_is_eog(model, llama_sampling_last(ctx_sampling)))||(number==current_interactive_length)) {
                 LOG("found an EOG token\n");
+                current_interactive_length=0;
 
                 if (params.interactive) {
                     if (!params.antiprompt.empty()) {
@@ -977,6 +980,7 @@ int main(int argc, char ** argv) {
                 }
 
                 std::string buffer;
+                
                 if (!params.input_prefix.empty() && !params.conversation) {
                     LOG("appending input prefix: '%s'\n", params.input_prefix.c_str());
                     printf("%s", params.input_prefix.c_str());
@@ -1089,6 +1093,24 @@ int main(int argc, char ** argv) {
                 // Add tokens to embd only if the input buffer is non-empty
                 // Entering a empty line lets the user pass control back
                 if (buffer.length() > 1) {
+                    std::istringstream iss(buffer);
+                    // 提取数字部分
+                    if (iss >> number) {
+                      
+                        
+                        // 忽略接下来的所有空白字符（包括空格、制表符等）
+                        iss.ignore(std::numeric_limits<std::streamsize>::max(), ' ');
+                        
+                        // 将剩余的部分重新赋值给buffer
+                        std::string remaining;
+                        getline(iss, remaining);
+                        buffer = remaining;
+                        
+                       
+                    } else {
+                        number=-1;
+                    }
+
                     // append input suffix if any
                     if (!params.input_suffix.empty() && !params.conversation) {
                         LOG("appending input suffix: '%s'\n", params.input_suffix.c_str());
