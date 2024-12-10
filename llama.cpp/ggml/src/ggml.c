@@ -18701,7 +18701,7 @@ static int ggml_get_n_tasks(struct ggml_tensor * node, int n_threads) {
 // }
 struct ggml_cplan ggml_graph_plan(const struct ggml_cgraph * cgraph, int n_threads) {
     // printf("!!!!!!ggml_graph_plan %d\n",n_threads);
-    n_threads=getAllCores();
+    // n_threads=getAllCores();
     if (n_threads <= 0) {//如果n_threads小于或等于0，则将其设置为默认的线程数GGML_DEFAULT_N_THREADS。
         n_threads = GGML_DEFAULT_N_THREADS;
     }
@@ -18913,77 +18913,77 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         int all=state->shared->n_threads;
        
         ggml_barrier(state->shared);
-        threadCounter2.count=0;
-        // printf("test2\n");
-        ggml_barrier(state->shared);
+        // threadCounter2.count=0;
+        // // printf("test2\n");
+        // ggml_barrier(state->shared);
         // printf("test3\n");
 
         if (state->shared->ec != GGML_STATUS_SUCCESS) {
                 break;
         }
         
-        if (state->ith == all-1) { // 最后一个
-            // printf("Thread:%d,all:%d;node:%d\n",state->ith,all,node_n);
-            pthread_mutex_lock(&threadCounter.lock);
-            if (exits>0&& nowThreadCount > 10) {
+        // if (state->ith == all-1) { // 最后一个
+        //     // printf("Thread:%d,all:%d;node:%d\n",state->ith,all,node_n);
+        //     pthread_mutex_lock(&threadCounter.lock);
+        //     if (exits>0&& nowThreadCount > 10) {
                 
-                exits--;
-                nowThreadCount--;
-                state->shared->n_threads = nowThreadCount;
+        //         exits--;
+        //         nowThreadCount--;
+        //         state->shared->n_threads = nowThreadCount;
                 
                 
-                pthread_mutex_unlock(&threadCounter.lock);
-                pthread_mutex_lock(&threadCounter2.lock);
-                threadCounter2.count=1;
-                // printf("\nidle core:%d,Thread %d exiting, new thread count: %d\n",idleCores, state->ith, nowThreadCount);
-                pthread_cond_broadcast(&threadCounter2.cond); // 或 pthread_cond_broadcast(&cond);
-                pthread_mutex_unlock(&threadCounter2.lock);
+        //         pthread_mutex_unlock(&threadCounter.lock);
+        //         pthread_mutex_lock(&threadCounter2.lock);
+        //         threadCounter2.count=1;
+        //         // printf("\nidle core:%d,Thread %d exiting, new thread count: %d\n",idleCores, state->ith, nowThreadCount);
+        //         pthread_cond_broadcast(&threadCounter2.cond); // 或 pthread_cond_broadcast(&cond);
+        //         pthread_mutex_unlock(&threadCounter2.lock);
                 
-                return 0;
-            }
-            else 
-            if (adds>0 ) {
-                adds=fmin(allCores-nowThreadCount-5,adds);
-                adds=fmax(adds,0);
-                nowThreadCount += adds;
+        //         return 0;
+        //     }
+        //     else 
+        //     if (adds>0 ) {
+        //         adds=fmin(allCores-nowThreadCount-5,adds);
+        //         adds=fmax(adds,0);
+        //         nowThreadCount += adds;
                 
-                if(adds>0){
-                    struct ggml_compute_state *workers = alloca(sizeof(struct ggml_compute_state) * adds);
-                    for (int j = 0; j < adds; ++j) {
-                        workers[j] = (struct ggml_compute_state){
-                            .thrd = 0,
-                            .ith = nowThreadCount-adds+j,
-                            .shared = state->shared,
-                            .start_node =node_n+1,
-                        };
-                    }
-                    state->shared->n_threads = nowThreadCount;
-                    for (int j = 0; j < adds; ++j) {
-                        pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
-                        // printf("\nidle core:%d,Creating new thread %d, new thread count: %d\n", idleCores,workers[j].ith, nowThreadCount);
-                    }
-                    adds=0;
+        //         if(adds>0){
+        //             struct ggml_compute_state *workers = alloca(sizeof(struct ggml_compute_state) * adds);
+        //             for (int j = 0; j < adds; ++j) {
+        //                 workers[j] = (struct ggml_compute_state){
+        //                     .thrd = 0,
+        //                     .ith = nowThreadCount-adds+j,
+        //                     .shared = state->shared,
+        //                     .start_node =node_n+1,
+        //                 };
+        //             }
+        //             state->shared->n_threads = nowThreadCount;
+        //             for (int j = 0; j < adds; ++j) {
+        //                 pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
+        //                 // printf("\nidle core:%d,Creating new thread %d, new thread count: %d\n", idleCores,workers[j].ith, nowThreadCount);
+        //             }
+        //             adds=0;
                 
-                }
+        //         }
                 
-            }
-            pthread_mutex_unlock(&threadCounter.lock);
-            pthread_mutex_lock(&threadCounter2.lock);
-            threadCounter2.count=1;
-            pthread_cond_broadcast(&threadCounter2.cond); // 或 pthread_cond_broadcast(&cond);
-            pthread_mutex_unlock(&threadCounter2.lock);
-        }else {
+        //     }
+        //     pthread_mutex_unlock(&threadCounter.lock);
+        //     pthread_mutex_lock(&threadCounter2.lock);
+        //     threadCounter2.count=1;
+        //     pthread_cond_broadcast(&threadCounter2.cond); // 或 pthread_cond_broadcast(&cond);
+        //     pthread_mutex_unlock(&threadCounter2.lock);
+        // }else {
             
           
-            pthread_mutex_lock(&threadCounter2.lock);
-            while (!threadCounter2.count) {
-                pthread_cond_wait(&threadCounter2.cond, &threadCounter2.lock);
-            }
+        //     pthread_mutex_lock(&threadCounter2.lock);
+        //     while (!threadCounter2.count) {
+        //         pthread_cond_wait(&threadCounter2.cond, &threadCounter2.lock);
+        //     }
             
-            pthread_cond_broadcast(&threadCounter2.cond);
-            pthread_mutex_unlock(&threadCounter2.lock);
-        }
-        params.nth= nowThreadCount;
+        //     pthread_cond_broadcast(&threadCounter2.cond);
+        //     pthread_mutex_unlock(&threadCounter2.lock);
+        // }
+        // params.nth= nowThreadCount;
 
         
     }
@@ -19013,19 +19013,19 @@ void* monitor(void* arg) {
 
 enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
     int n_threads = cplan->n_threads;
+    
     if (pThreadPool == NULL) {
-        int allCores = getAllCores();
+        int allCores = n_threads;
         
         pThreadPool = ThreadPoolConstruct(allCores, allCores);
-        pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);
-        nowThreadCount = getIdleCoresCount();
-        nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
-        allCores=getAllCores();
+        // pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);
+        nowThreadCount = n_threads;
+        allCores=n_threads;
     }
     struct ggml_compute_state_shared state_shared = {
         /*.cgraph                  =*/ cgraph,
         /*.cgraph_plan             =*/ cplan,
-        /*.n_threads               =*/ nowThreadCount,
+        /*.n_threads               =*/ n_threads,
         /*.n_barrier               =*/ 0,
         /*.n_barrier_passed        =*/ 0,
         /*.abort_callback          =*/ NULL,
