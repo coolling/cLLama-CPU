@@ -968,6 +968,7 @@ int main(int argc, char ** argv) {
 
             if (n_past > 0 && is_interacting) {
                 // printKVUsed(ctx);
+               
                 LOG("waiting for user input\n");
                 //coolling:wait input
                 

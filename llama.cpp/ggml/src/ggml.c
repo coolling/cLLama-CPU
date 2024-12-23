@@ -19724,7 +19724,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
     wait_time3=0;
     
     // ggml_graph_print(cgraph);
-    int n_threads = cplan->n_threads;//总核数
+    // int n_threads = cplan->n_threads;//总核数
     if (pThreadPool == NULL) {//线程池为空，即还没开始第一次推理
         global_cgraph=cgraph;//全局，用于生产者加载数据
         allCores = getAllCores();
@@ -19774,7 +19774,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         pThreadPool->AddWorkUnlimit(pThreadPool, producer_func, NULL);//生产者线程
       
     }
-    
+    size_t all1=ggml_time_us();
     struct ggml_compute_state_shared state_shared = {
         /*.cgraph                  =*/ cgraph,
         /*.cgraph_plan             =*/ cplan,
@@ -19796,7 +19796,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
             .start_node = 0,
         };
     }
-    size_t all1=ggml_time_us();
+    
     for (int j = 1; j < nowThreadCount; ++j) {
         pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
     }
@@ -19806,7 +19806,7 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
     // printf("all wait_time1: %.4f s\n",wait_time1 / 1000000.0f);
     // printf("all wait_time2: %.4f s\n",wait_time2 / 1000000.0f);
     // printf("all wait_time3: %.4f s\n",wait_time3 / 1000000.0f);
-    // printf("all time: %.4f s\n",(all2-all1)/ 1000000.0f);
+    printf("all time: %.4f s\n",(all2-all1)/ 1000000.0f);
     return state_shared.ec;
 }
 

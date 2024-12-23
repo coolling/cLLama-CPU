@@ -10,12 +10,12 @@
 
 int THREADS=4; //读取的线程数
 int NUM_CORES=12; //总核心数
-int RESERVE_CORES= 2 ;//预留的核心数
+int RESERVE_CORES= 1 ;//预留的核心数
 int RESERVE_MEM =50 ;//预留的内存数
-float THRESHOLD= 90 ;//空闲核心的阈值
-char* CURRENT_MEM_FILE= "/sys/fs/cgroup/my_cgroup/memory.current";
-char* MAX_MEM_FILE ="/sys/fs/cgroup/my_cgroup/memory.max";
-char* FILENAME = "/mnt/pmem/model/model/vicuna-7B-v1.5-F16.gguf"; //加载的模型地址
+float THRESHOLD= 80 ;//空闲核心的阈值
+char* CURRENT_MEM_FILE= "/sys/fs/cgroup/memory/my_cgroup/memory.usage_in_bytes";
+char* MAX_MEM_FILE ="/sys/fs/cgroup/memory/my_cgroup/memory.limit_in_bytes";
+char* FILENAME = "/mnt/nvme_raid0/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf"; //加载的模型地址
 int getAllCores(){
     return NUM_CORES;
     // return  sysconf(_SC_NPROCESSORS_ONLN);
