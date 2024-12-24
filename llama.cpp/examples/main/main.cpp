@@ -9,6 +9,7 @@
 #include "console.h"
 #include "llama.h"
 
+
 #include <cassert>
 #include <cinttypes>
 #include <cmath>
@@ -24,6 +25,9 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <termios.h>
+#include <chrono>
+#include <ctime>
+#include <iomanip>  // for std::put_time
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <signal.h>
 #include <unistd.h>
@@ -650,6 +654,7 @@ int main(int argc, char ** argv) {
 // 这个循环会持续进行，直到满足以下条件之一：
 // n_remain（剩余需要生成的标记数）为0，且没有检测到反提示（is_antiprompt）。
 // 用户处于交互模式（params.interactive）
+    auto start = std::chrono::high_resolution_clock::now();
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         
         // predict
@@ -796,7 +801,15 @@ int main(int argc, char ** argv) {
                 if (n_eval > params.n_batch) {
                     n_eval = params.n_batch;
                 }
-
+                auto end = std::chrono::high_resolution_clock::now();
+                // 计算时间差并转换为毫秒
+                double elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                start = std::chrono::high_resolution_clock::now();
+                auto now = std::chrono::system_clock::now();
+                std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+                std::string timestamp = std::ctime(&now_time_t);
+                timestamp.erase(timestamp.find('\n'));
+                LOG("Timestamp: %s; elapsed:%f ms\n", timestamp.c_str(), elapsed_ms);
                 LOG("eval: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, embd).c_str());
 
                 if (llama_decode(ctx, llama_batch_get_one(&embd[i], n_eval, n_past, 0))) {

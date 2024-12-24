@@ -18902,6 +18902,7 @@ typedef struct {
 Counter threadCounter;//用于monitor和最后一个线程互斥地修改add和exit
 Counter threadCounter2;//控制根据动态资源调整线程数时的同步
 Counter threadCounter3;//用于控制绑定核的同步
+Counter threadCounterflag;//用于确保内存释放
 Counter stayCounter;//用于控制驻留参数
 int idleCores = 0;
 long freeMem =0;
@@ -19093,6 +19094,7 @@ Node* isValueInList(Node* head,off_t  value) {
     }
     return NULL; // 值不在链表中
 }
+int flag=0;
 // 生产者线程函数
 void *producer_func(void *arg) {
     char last_name[100]="";//上一个参数名称
@@ -19111,7 +19113,7 @@ void *producer_func(void *arg) {
         for(int i=0;i<NUM_THREADS;i++){
             load_time11[i]=0;//加载数据时间置为0
         }
-        int flag=0;
+        flag=0;
         for (int node_n = 0; node_n < global_cgraph->n_nodes; node_n++) {
             struct ggml_tensor *node = global_cgraph->nodes[node_n];
             
@@ -19138,8 +19140,9 @@ void *producer_func(void *arg) {
                         }
                         strcpy(last_name, name);
                     }else{
-                        
+                        pthread_mutex_lock(&threadCounterflag.lock);
                         flag++;
+                        pthread_mutex_unlock(&threadCounterflag.lock);
                         //当前层统计完了，可以加载数据
                         layer_count++;//目前累计了一层
                         if(layer_count<1){ //1可以修改为你想累计的层数，这里指累计一层就读取
@@ -19284,6 +19287,15 @@ void *producer_func(void *arg) {
                         offsetl=offset;
                         offsetr=offset+size;
                         layer_count=0;
+                        pthread_mutex_lock(&mutex);
+                        
+                        // 等待直到缓冲区有空间
+                        while (flag==1&&count == q_max) {
+                            pthread_cond_signal(&full);
+                            // printf("Producer: Waiting start...\n");
+                            pthread_cond_wait(&empty, &mutex);
+                        }
+                        pthread_mutex_unlock(&mutex);
 
                     }
                     
@@ -19695,8 +19707,8 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
 void* monitor(void* arg) {
     while (1) { 
         idleCores = getIdleCoresCount(cores,allCores);
-        freeMem = getFreeMemoryBytes();
-        // printf("idleCores:%d  CuCores:%d\n",idleCores,nowThreadCount);
+        freeMem =getFreeMemoryBytes();
+        // printf("idleCores:%d  freemem:%d\n",idleCores,freeMem);
         pthread_mutex_lock(&threadCounter.lock);
         if (idleCores < RESERVE_CORES && nowThreadCount > 1) {
             exits =1;
@@ -19711,8 +19723,25 @@ void* monitor(void* arg) {
         pthread_mutex_unlock(&threadCounter.lock);
 
         
-        sleep(0.3);
-       
+        sleep(0.5);
+        pthread_mutex_lock(&threadCounterflag.lock);
+        
+        //监测空闲内存进行释放
+        while(flag==1&&freeMem<RESERVE_MEM &&stay_head!=NULL){
+            // printf("out freemen\n");
+            // pthread_mutex_lock(&stayCounter.lock);
+            Node* t = stay_head;
+            stay_head = stay_head->next;
+            if (stay_head == NULL) {
+                stay_tail = NULL;
+            }
+            freeMem+=t->size/1024/1024;
+            // pthread_mutex_unlock(&stayCounter.lock);
+            free(t->data);
+            free(t);
+
+        }
+        pthread_mutex_unlock(&threadCounterflag.lock);
     }
     return NULL;
 }
@@ -19741,29 +19770,31 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         //coolling-todo：改成从上层传下来的文件名
         const char *filename =FILENAME;
 
-        fout = ggml_fopen(filename, "r");//打开文件，用于后面加载权重
+        // fout = ggml_fopen(filename, "r");//打开文件，用于后面加载权重
         // printf("num:%d\n",NUM_THREADS);
         for(int i=0;i<NUM_THREADS;i++){
             fouts[i] = ggml_fopen(filename, "r");
+            int fd = fileno(fouts[i]);
+            posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED);  // 建议丢弃缓存
         }
-        if (!fout) {
-            fprintf(stderr, "%s: failed to open %s: %s\n", __func__, filename, strerror(errno));
-            return;
-        }
-        // 获取文件描述符
-        int fd = fileno(fout);
-        if (fd == -1) {
-            perror("fileno");
-            fclose(fout);
-            return EXIT_FAILURE;
-        }
-        // 获取文件大小
-        struct stat sb;
-        if (fstat(fd, &sb) == -1) {
-            perror("fstat");
-            fclose(fout);
-            return EXIT_FAILURE;
-        }
+        // if (!fout) {
+        //     fprintf(stderr, "%s: failed to open %s: %s\n", __func__, filename, strerror(errno));
+        //     return;
+        // }
+        // // 获取文件描述符
+        // int fd = fileno(fout);
+        // if (fd == -1) {
+        //     perror("fileno");
+        //     fclose(fout);
+        //     return EXIT_FAILURE;
+        // }
+        // // 获取文件大小
+        // struct stat sb;
+        // if (fstat(fd, &sb) == -1) {
+        //     perror("fstat");
+        //     fclose(fout);
+        //     return EXIT_FAILURE;
+        // }
         // 映射文件
         // mapped = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
         // if (mapped == MAP_FAILED) {
@@ -19803,9 +19834,9 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
     ggml_graph_compute_thread(&workers[0]);
     size_t all2=ggml_time_us();
     // coolling:print wait time
-    // printf("all wait_time1: %.4f s\n",wait_time1 / 1000000.0f);
-    // printf("all wait_time2: %.4f s\n",wait_time2 / 1000000.0f);
-    // printf("all wait_time3: %.4f s\n",wait_time3 / 1000000.0f);
+    printf("all wait_time1: %.4f s\n",wait_time1 / 1000000.0f);
+    printf("all wait_time2: %.4f s\n",wait_time2 / 1000000.0f);
+    printf("all wait_time3: %.4f s\n",wait_time3 / 1000000.0f);
     printf("all time: %.4f s\n",(all2-all1)/ 1000000.0f);
     return state_shared.ec;
 }

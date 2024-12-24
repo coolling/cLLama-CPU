@@ -11,10 +11,10 @@
 int THREADS=4; //读取的线程数
 int NUM_CORES=12; //总核心数
 int RESERVE_CORES= 1 ;//预留的核心数
-int RESERVE_MEM =50 ;//预留的内存数
+int RESERVE_MEM =1024 ;//预留的内存数
 float THRESHOLD= 80 ;//空闲核心的阈值
-char* CURRENT_MEM_FILE= "/sys/fs/cgroup/memory/my_cgroup/memory.usage_in_bytes";
-char* MAX_MEM_FILE ="/sys/fs/cgroup/memory/my_cgroup/memory.limit_in_bytes";
+char* CURRENT_MEM_FILE= "/sys/fs/cgroup/memory/my_cgroup2/memory.usage_in_bytes";
+char* MAX_MEM_FILE ="/sys/fs/cgroup/memory/my_cgroup2/memory.limit_in_bytes";
 char* FILENAME = "/mnt/nvme_raid0/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf"; //加载的模型地址
 int getAllCores(){
     return NUM_CORES;
@@ -73,15 +73,16 @@ int countIdleCores(const char *output,Core *cores,int size) {
             }
         }
     }
-
+    // printf("%d\n",idleCount);
     return idleCount;
 }
 
 char* executeCommand(const char *cmd) {
     FILE *fp;
-    char *output = malloc(BUFFER_SIZE * 100); // 假设最多 100 行
     char buffer[BUFFER_SIZE];
-    output[0] = '\0'; // 初始化为空
+    char *output = NULL;
+    size_t output_size = 0;
+    size_t output_len = 0;
 
     // 执行命令
     fp = popen(cmd, "r");
@@ -92,12 +93,26 @@ char* executeCommand(const char *cmd) {
 
     // 读取命令输出
     while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-        strcat(output, buffer);
+        size_t len = strlen(buffer);
+        if (output_len + len + 1 > output_size) {
+            output_size = output_size ? output_size * 2 : BUFFER_SIZE;
+            char *new_output = realloc(output, output_size);
+            if (!new_output) {
+                free(output);
+                pclose(fp);
+                return NULL; // 内存分配失败
+            }
+            output = new_output;
+        }
+        memcpy(output + output_len, buffer, len);
+        output_len += len;
     }
 
+    output[output_len] = '\0'; // 确保字符串以空字符结尾
     pclose(fp);
     return output;
 }
+
 int getIdleCoresCount(Core * cores,int size){
     const char *cmd = "mpstat -P ALL 1 1";
     char *mpstatOutput = executeCommand(cmd);
@@ -442,8 +457,8 @@ long long read_memory_file(const char *file_path) {
 // 函数定义
 int getFreeMemoryBytes() {
     // return 0;
-    long long current_memory = read_memory_file("/sys/fs/cgroup/my_cgroup/memory.current");
-    long long max_memory = read_memory_file("/sys/fs/cgroup/my_cgroup/memory.max");
+    long long current_memory = read_memory_file(CURRENT_MEM_FILE);
+    long long max_memory = read_memory_file(MAX_MEM_FILE);
 
     if (current_memory < 0 || max_memory < 0) {
         printf("Failed to read memory values\n");
@@ -453,6 +468,7 @@ int getFreeMemoryBytes() {
     // 计算剩余内存（单位：字节）
     long long remaining_memory_bytes = max_memory - current_memory;
     int remaining_memory_mb = remaining_memory_bytes / (1024 * 1024);
+    // printf("remaining_memory_mb %d\n",remaining_memory_mb);
     return remaining_memory_mb;
 }
 long getFreeMemoryBytes_fromsys() {

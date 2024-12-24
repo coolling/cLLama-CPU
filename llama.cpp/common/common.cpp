@@ -269,7 +269,7 @@ bool gpt_params_parse_ex(int argc, char ** argv, gpt_params & params) {
 
 bool gpt_params_parse(int argc, char ** argv, gpt_params & params) {
     const auto params_org = params; // the example can modify the default params
-    printf("\n\n\n!!!!hardware_concurrency%d\n",params.n_threads);
+    // printf("\n\n\n!!!!hardware_concurrency%d\n",params.n_threads);
     try {
         if (!gpt_params_parse_ex(argc, argv, params) || params.usage) {
             params = params_org;
