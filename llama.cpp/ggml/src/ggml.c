@@ -9286,11 +9286,11 @@ static void ggml_compute_forward_add_bf16_f32(
 static void ggml_compute_forward_add_f16_f16(
         const struct ggml_compute_params * params,
         struct ggml_tensor * dst) {
-    printf("!!\n");
+    // printf("!!\n");
     const struct ggml_tensor * src0 = dst->src[0];
     const struct ggml_tensor * src1 = dst->src[1];
     if(src0->data==0){
-        printf("omg!!!!\n");
+        // printf("omg!!!!\n");
     }
     GGML_ASSERT(ggml_are_same_shape(src0, src1) && ggml_are_same_shape(src0, dst));
 
@@ -18864,14 +18864,14 @@ int clear_thread_affinity(pthread_t thread) {
     CPU_ZERO(&old_cpuset);
     if (pthread_getaffinity_np(thread, sizeof(cpu_set_t), &old_cpuset) == 0) {
         int core_id;
-        printf("Current CPU affinity: ");
+        // printf("Current CPU affinity: ");
         for (core_id = 0; core_id < ncpu; core_id++) {
             if (CPU_ISSET(core_id, &old_cpuset)) {
-                printf("%d ", core_id);
+                // printf("%d ", core_id);
                 update_last_assigned_time(cores,core_id);
             }
         }
-        printf("\n");
+        // printf("\n");
     } else {
         perror("pthread_getaffinity_np");
         CPU_FREE(cpuset);
@@ -18892,7 +18892,7 @@ int clear_thread_affinity(pthread_t thread) {
 
 
     // 打印绑定结果
-    printf("clear thread affinity successfully\n");
+    // printf("clear thread affinity successfully\n");
 
 
     // 释放 CPU 集合
@@ -19045,7 +19045,7 @@ size_t load_time13[NUM_THREADS];
 size_t load=0; //记录加载数据时间
 
 void* copyMemory(const void* src, size_t size) {
-    printf("!!\n");
+    // printf("!!\n");
     // 分配内存
     void* dest = malloc(size);
     if (dest == NULL) {
@@ -20088,7 +20088,7 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
 }
 
 struct ggml_cgraph * ggml_graph_import(const char * fname, struct ggml_context ** ctx_data, struct ggml_context ** ctx_eval) {
-    printf("import\n");
+    // printf("import\n");
     assert(*ctx_data == NULL);
     assert(*ctx_eval == NULL);
 
@@ -20604,7 +20604,7 @@ static enum ggml_opt_result ggml_opt_adam(
 
     // these will store the parameters we want to optimize
     struct ggml_tensor * ps[GGML_MAX_PARAMS];
-    printf("test1\n");
+    // printf("test1\n");
     int np = 0;
     int64_t nx = 0;
     for (int i = 0; i < gf->n_nodes; ++i) {
