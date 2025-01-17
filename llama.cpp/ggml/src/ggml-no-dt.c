@@ -1841,7 +1841,6 @@ struct ggml_compute_state {
     int ith;
     struct ggml_compute_state_shared * shared;
     int start_node;
-    int is_add;
 };
 
 struct ggml_compute_params {
@@ -18356,10 +18355,91 @@ typedef int ggml_lock_t;
 #define ggml_thread_join   pthread_join
 
 #endif
+// cool:函数用于将当前线程绑定到指定的核心
+int bind_thread_to_core(int core_id,Core *cores) {
+    cpu_set_t *cpuset;
+    size_t setsize;
 
+    // 获取系统中可用的 CPU 核心数
+    int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    // printf("cpu count:%d\n",ncpu);
+    if (ncpu < 0) {
+        perror("Error getting the number of online processors");
+        return -1;
+    }
 
+    // 获取分配给 cpu_set_t 的大小
+    setsize = CPU_ALLOC_SIZE(ncpu);
+    cpuset = CPU_ALLOC(ncpu);
+    if (cpuset == NULL) {
+        perror("Error allocating CPU set");
+        return -1;
+    }
 
+    // 初始化 CPU 集合并设置指定的核心
+    CPU_ZERO_S(setsize, cpuset);
+    if (CPU_SET_S(core_id, setsize, cpuset) == 0) {
+        perror("Error setting CPU");
+        CPU_FREE(cpuset);
+        return -1;
+    }
+    // 将当前线程绑定到指定的核心
+    int result = pthread_setaffinity_np(pthread_self(), setsize, cpuset);
+    if (result != 0) {
+        fprintf(stderr, "Error binding thread to core %d: %s\n", core_id, strerror(result));
+        CPU_FREE(cpuset);
+        return -1;
+    }
 
+    // 打印绑定结果
+    // printf("Thread bound to core %d\n", core_id);
+
+    // 释放CPU集合
+    CPU_FREE(cpuset);
+    cores[core_id].isUsed=true;
+    
+    
+    return 0;
+}
+// cool:清空线程绑核信息
+int clear_thread_affinity(pthread_t thread) {
+    cpu_set_t *cpuset;
+    size_t setsize;
+    // 获取系统中可用的 CPU 核心数
+    int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    // printf("cpu count:%d\n",ncpu);
+    if (ncpu < 0) {
+        perror("Error getting the number of online processors");
+        return -1;
+    }
+
+    // 获取分配给 cpu_set_t 的大小
+    setsize = CPU_ALLOC_SIZE(ncpu);
+    cpuset = CPU_ALLOC(ncpu);
+    if (cpuset == NULL) {
+        perror("Error allocating CPU set");
+        return -1;
+    }
+
+    // 初始化 CPU 集合并设置指定的核心
+    CPU_ZERO_S(setsize, cpuset);
+    
+    int result = pthread_setaffinity_np(pthread_self(), setsize, cpuset);
+    if (result != 0) {
+       
+        CPU_FREE(cpuset);
+        return -1;
+    }
+
+    // 打印绑定结果
+    printf("clear %d\n");
+
+    // 释放CPU集合
+    CPU_FREE(cpuset);
+    
+    
+    return 0;
+}
 // Android's libc implementation "bionic" does not support setting affinity
 #if defined(__gnu_linux__)
 static void set_numa_thread_affinity(int thread_n) {
@@ -18832,121 +18912,11 @@ int now_node = 0;
 int nowThreadCount = 0;
 int allCores=0;
 CThread_pool_t *pThreadPool = NULL;
-CThread_pool_t **thread_pool_array=NULL;
 Core *cores = NULL;
 SharedGroup *shared_groups_level2;
 SharedGroup *shared_groups_level3;
 int count2=0;
 int count3=0;
-// cool:清空线程绑核信息
-int clear_thread_affinity(pthread_t thread) {
-    cpu_set_t *cpuset;
-    size_t setsize;
-    // 获取系统中可用的 CPU 核心数
-    int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
-    if (ncpu < 0) {
-        perror("Error getting the number of online processors");
-        return -1;
-    }
-
-
-    // 获取分配给 cpu_set_t 的大小
-    setsize = CPU_ALLOC_SIZE(ncpu);
-    cpuset = CPU_ALLOC(ncpu);
-    if (cpuset == NULL) {
-        perror("Error allocating CPU set");
-        return -1;
-    }
-
-
-    // 打印当前绑定的核心
-    cpu_set_t old_cpuset;
-    CPU_ZERO(&old_cpuset);
-    if (pthread_getaffinity_np(thread, sizeof(cpu_set_t), &old_cpuset) == 0) {
-        int core_id;
-        printf("Current CPU affinity: ");
-        for (core_id = 0; core_id < ncpu; core_id++) {
-            if (CPU_ISSET(core_id, &old_cpuset)) {
-                printf("%d ", core_id);
-                update_last_assigned_time(cores,core_id);
-            }
-        }
-        printf("\n");
-    } else {
-        perror("pthread_getaffinity_np");
-        CPU_FREE(cpuset);
-        return -1;
-    }
-
-
-    // 初始化 CPU 集合并设置所有核心
-    CPU_ZERO_S(setsize, cpuset);
-
-
-    // 设置线程的 CPU 亲和性
-    int result = pthread_setaffinity_np(thread, setsize, cpuset);
-    if (result!= 0) {
-        CPU_FREE(cpuset);
-        return -1;
-    }
-
-
-    // 打印绑定结果
-    printf("clear thread affinity successfully\n");
-
-
-    // 释放 CPU 集合
-    CPU_FREE(cpuset);
-
-
-    return 0;
-}
-// cool:函数用于将当前线程绑定到指定的核心
-int bind_thread_to_core(int core_id,Core *cores) {
-    cpu_set_t *cpuset;
-    size_t setsize;
-
-    // 获取系统中可用的 CPU 核心数
-    int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
-    // printf("cpu count:%d\n",ncpu);
-    if (ncpu < 0) {
-        perror("Error getting the number of online processors");
-        return -1;
-    }
-
-    // 获取分配给 cpu_set_t 的大小
-    setsize = CPU_ALLOC_SIZE(ncpu);
-    cpuset = CPU_ALLOC(ncpu);
-    if (cpuset == NULL) {
-        perror("Error allocating CPU set");
-        return -1;
-    }
-
-    // 初始化 CPU 集合并设置指定的核心
-    CPU_ZERO_S(setsize, cpuset);
-    if (CPU_SET_S(core_id, setsize, cpuset) == 0) {
-        perror("Error setting CPU");
-        CPU_FREE(cpuset);
-        return -1;
-    }
-    // 将当前线程绑定到指定的核心
-    int result = pthread_setaffinity_np(pthread_self(), setsize, cpuset);
-    if (result != 0) {
-        fprintf(stderr, "Error binding thread to core %d: %s\n", core_id, strerror(result));
-        CPU_FREE(cpuset);
-        return -1;
-    }
-
-    // 打印绑定结果
-    // printf("Thread bound to core %d\n", core_id);
-
-    // 释放CPU集合
-    CPU_FREE(cpuset);
-    cores[core_id].isUsed=true;
-    
-    
-    return 0;
-}
 void print_cores_and_shared_groups() {
     printf("----------------------------------------------\n");
     if (cores == NULL) {
@@ -19482,41 +19452,25 @@ void *producer_func(void *arg) {
 
 
 
-static void bindCore(int ith){
-    //绑定核
-    pthread_mutex_lock(&threadCounter3.lock);
-    int assigned_core=find_core_assigned(cores,allCores);
-    // printf("assigned_core:%d\n",assigned_core);
-    if(assigned_core==-1){
-        bind_thread_to_core(ith,cores);
-    }else{
-        bind_thread_to_core(assigned_core,cores);
-    }
-    pthread_mutex_unlock(&threadCounter3.lock);
-    
-}
 
-static void unbindCore(){
 
-    clear_thread_affinity(pthread_self());
-    
-
-}
 static thread_ret_t ggml_graph_compute_thread(void *data) {
     struct ggml_compute_state *state = (struct ggml_compute_state *)data;
-    if(state->is_add==1){
-        size_t t_main_start1 = ggml_time_us();
-        // printf("%d\n",state->ith);
-        bindCore(state->ith);
-        size_t t_main_end = ggml_time_us();
-        // printf("wait time: %.2f s\n",(t_main_end - t_main_start1) / 1000000.0f);
-          
-    }
 
     const struct ggml_cgraph *cgraph = state->shared->cgraph;
     const struct ggml_cplan *cplan = state->shared->cplan;
     
-    
+    //绑定核
+    pthread_mutex_lock(&threadCounter3.lock);
+    set_numa_thread_affinity(state->ith);
+    // int assigned_core=find_core_assigned(cores,allCores);
+    // // printf("assigned_core:%d\n",assigned_core);
+    // if(assigned_core==-1){
+    //     bind_thread_to_core(state->ith,cores);
+    // }else{
+    //     bind_thread_to_core(assigned_core,cores);
+    // }
+    pthread_mutex_unlock(&threadCounter3.lock);
 
     struct ggml_compute_params params = {
         .ith = state->ith,
@@ -19670,7 +19624,9 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
         }
         pthread_mutex_unlock(&threadCounterflag.lock);
     }
-    
+    clear_numa_thread_affinity();
+    clear_thread_affinity(pthread_self());
+    // update_last_assigned_time(cores,assigned_core);
     
     return 0;
 }
@@ -19720,9 +19676,8 @@ void* monitor(void* arg) {
     }
     return NULL;
 }
-int first=1;
+
 enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
-    int local_add=0;
     pthread_mutex_lock(&threadCounterflag.lock);
     in_wait=0;
     pthread_mutex_unlock(&threadCounterflag.lock);
@@ -19738,30 +19693,12 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         allCores = getAllCores();
         init_shared_groups(allCores, &shared_groups_level2, &count2,&shared_groups_level3,&count3);//获取系统共享2级3级cache的核心组
         init_cores(&cores,allCores,&shared_groups_level2,count2,&shared_groups_level3,count3);//记录每个核心共享2级3级cache的共享组
-        pThreadPool = ThreadPoolConstruct(3, 3);//创建线程池
-        thread_pool_array = (CThread_pool_t **)malloc(12 * sizeof(CThread_pool_t *));
-        if (thread_pool_array == NULL) {
-            perror("malloc failed");
-            return 1;
-        }
-
-
-        // 初始化每个指针为 NULL
-        for (int i = 0; i < 12; i++) {
-            thread_pool_array[i] = (CThread_pool_t *)malloc(sizeof(CThread_pool_t));
-            thread_pool_array[i] = ThreadPoolConstruct(1, 1);//创建线程池
-        }
+        pThreadPool = ThreadPoolConstruct(allCores*2+2, allCores*2+2);//创建线程池
         pThreadPool->AddWorkUnlimit(pThreadPool, monitor, NULL);//监控线程，查看空闲核心
         
         nowThreadCount = getIdleCoresCount(cores,allCores);//设置第一次推理的核心数
         nowThreadCount = nowThreadCount == 0 ? 1 : nowThreadCount;
-        nowThreadCount = nowThreadCount == 12 ? 11 : nowThreadCount;
-        local_add=nowThreadCount;
-        // bindCore(0);
-        // for(int j=1;j<nowThreadCount;j++){
-        //     thread_pool_array[j]->AddWorkUnlimit(thread_pool_array[j], bindCore, j);
-
-        // }
+        // nowThreadCount=4;
         
         // print_cores_and_shared_groups();
         //coolling-todo：改成从上层传下来的文件名
@@ -19781,25 +19718,9 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
         pThreadPool->AddWorkUnlimit(pThreadPool, producer_func, NULL);//生产者线程
       
     }
-    if(first!=1){
-        pthread_mutex_lock(&threadCounter.lock);
-        if(adds>0 &&nowThreadCount+adds<allCores){
-            local_add=adds;
-            nowThreadCount+=adds;
-            adds=0;
-        }else if(exits>0&& nowThreadCount > exits){
-            for(int j=nowThreadCount-exits;j<nowThreadCount;j++){
-                thread_pool_array[j]->AddWorkUnlimit(thread_pool_array[j], unbindCore,NULL);
+    
 
-            }
-            nowThreadCount-=exits;
-            exits=0;
-
-        }
-        pthread_mutex_unlock(&threadCounter.lock);
-
-    }
-    first=0;
+    nowThreadCount=4;
     
     // printf("now threads:%d\n",nowThreadCount);
     size_t all1=ggml_time_us();
@@ -19817,18 +19738,16 @@ enum ggml_status ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cpla
     // printf("%d\n",nowThreadCount);
     struct ggml_compute_state *workers = alloca(sizeof(struct ggml_compute_state) * nowThreadCount);
     for (int j = 0; j < nowThreadCount; ++j) {
-       
         workers[j] = (struct ggml_compute_state){
             .thrd = 0,
             .ith = j,
             .shared = &state_shared,
             .start_node = 0,
-            .is_add=j+local_add>=nowThreadCount?1:0
         };
     }
     
     for (int j = 1; j < nowThreadCount; ++j) {
-        thread_pool_array[j]->AddWorkUnlimit(thread_pool_array[j], ggml_graph_compute_thread, &workers[j]);
+        pThreadPool->AddWorkUnlimit(pThreadPool, ggml_graph_compute_thread, &workers[j]);
     }
     ggml_graph_compute_thread(&workers[0]);
     

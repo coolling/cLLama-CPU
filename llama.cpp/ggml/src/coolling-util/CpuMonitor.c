@@ -8,14 +8,14 @@
 #include <time.h>
 #include <sched.h>
 
-int THREADS=4; //读取的线程数
+int THREADS=8; //读取的线程数
 int NUM_CORES=12; //总核心数
 int RESERVE_CORES= 1 ;//预留的核心数
-int RESERVE_MEM =1024 ;//预留的内存数
-float THRESHOLD= 80 ;//空闲核心的阈值
+int RESERVE_MEM =2048 ;//预留的内存数
+float THRESHOLD= 70 ;//空闲核心的阈值
 char* CURRENT_MEM_FILE= "/sys/fs/cgroup/memory/my_cgroup2/memory.usage_in_bytes";
 char* MAX_MEM_FILE ="/sys/fs/cgroup/memory/my_cgroup2/memory.limit_in_bytes";
-char* FILENAME = "/mnt/nvme_raid0/vicuna-7b-v1.5/vicuna-7B-v1.5-F16.gguf"; //加载的模型地址
+char* FILENAME = "/mnt/nvme_raid0/Llama-2-3b-hf/Llama-2-3B-7b-hf-F16.gguf"; //加载的模型地址
 int getAllCores(){
     return NUM_CORES;
     // return  sysconf(_SC_NPROCESSORS_ONLN);
@@ -385,8 +385,9 @@ int find_core_assigned(Core *cores, int core_count) {
     int count=0;
     memset(isvisited, false, sizeof(isvisited));
     for(int i=0;i<core_count;i++){
-            if(cores[i].isUsed==true){
-            //    printf("id:%d\nshared_group_level2:\n",cores[i].id);
+            if(cores[i].isUsed==true&&!isvisited[cores[i].id]){
+                isvisited[cores[i].id]=true;
+           
                
                 for(int j=0;j<cores[i].count2;j++){
                     
@@ -407,7 +408,8 @@ int find_core_assigned(Core *cores, int core_count) {
     }else{
         memset(isvisited, false, sizeof(isvisited));
         for(int i=0;i<core_count;i++){
-            if(cores[i].isUsed==true){
+            if(cores[i].isUsed==true&&!isvisited[cores[i].id]){
+                isvisited[cores[i].id]=true;
              
                 for(int j=0;j<cores[i].count3;j++){
                     
@@ -469,6 +471,7 @@ int getFreeMemoryBytes() {
     long long remaining_memory_bytes = max_memory - current_memory;
     int remaining_memory_mb = remaining_memory_bytes / (1024 * 1024);
     // printf("remaining_memory_mb %d\n",remaining_memory_mb);
+    // return 0;
     return remaining_memory_mb;
 }
 long getFreeMemoryBytes_fromsys() {

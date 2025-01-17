@@ -952,7 +952,7 @@ int main(int argc, char ** argv) {
             }
             current_interactive_length+=1;
             // deal with end of generation tokens in interactive mode
-            if ((number==-1&&llama_token_is_eog(model, llama_sampling_last(ctx_sampling)))||(number==current_interactive_length)) {
+            if ((number==-1&&llama_token_is_eog(model, llama_sampling_last(ctx_sampling)))||(number!=-1&&number<=current_interactive_length)) {
                 LOG("found an EOG token\n");
                 current_interactive_length=0;
 
